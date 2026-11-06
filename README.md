@@ -50,9 +50,14 @@ Deliberately left behind: `AGENTS.md`/`SOUL.md` boilerplate, `memory/`,
 
 ## Status
 
-Walking skeleton: a Spring Boot 3.5 / Java 21 app with one form and one endpoint
-(`POST /message` → `your message is: <message>`). Run with `mvn spring-boot:run`,
-then open http://localhost:8080.
+Walking skeleton: a Spring Boot 3.5 / Java 21 app with one form and one endpoint.
+`POST /message` forwards the text to the local OpenClaw Gateway
+(`POST /v1/chat/completions`, agent `openclaw/main`) and returns the agent's reply.
+
+Run with `mvn spring-boot:run`, then open http://localhost:8080. Copy
+`.env.example` to `.env` and set `OPENCLAW_TOKEN` to the gateway token from
+`~/.openclaw/openclaw.json`; the Gateway also needs
+`gateway.http.endpoints.chatCompletions.enabled = true`.
 
 ## Plane
 
