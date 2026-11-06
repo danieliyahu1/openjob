@@ -27,8 +27,8 @@ class OpenClawClient {
         this.agent = agent;
     }
 
-    String reply(String message) {
-        ChatRequest request = new ChatRequest(agent, List.of(new ChatMessage("user", message)));
+    String reply(String message, String conversation) {
+        ChatRequest request = new ChatRequest(agent, List.of(new ChatMessage("user", message)), conversation);
         ChatResponse response = http.post()
                 .uri("/v1/chat/completions")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -38,7 +38,7 @@ class OpenClawClient {
         return response.choices().getFirst().message().content();
     }
 
-    record ChatRequest(String model, List<ChatMessage> messages) {
+    record ChatRequest(String model, List<ChatMessage> messages, String user) {
     }
 
     record ChatMessage(String role, String content) {

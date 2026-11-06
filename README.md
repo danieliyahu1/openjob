@@ -50,9 +50,12 @@ Deliberately left behind: `AGENTS.md`/`SOUL.md` boilerplate, `memory/`,
 
 ## Status
 
-Walking skeleton: a Spring Boot 3.5 / Java 21 app with one form and one endpoint.
-`POST /message` forwards the text to the local OpenClaw Gateway
-(`POST /v1/chat/completions`, agent `openclaw/main`) and returns the agent's reply.
+Walking skeleton: a Spring Boot 3.5 / Java 21 app with a chat page and one
+endpoint. `POST /message` forwards the text to the local OpenClaw Gateway
+(`POST /v1/chat/completions`, agent `openclaw/main`) and returns the agent's
+reply. The conversation id is the servlet session id, so each browser gets its
+own thread with the agent; after 30 idle minutes the cookie expires and the next
+message starts a new one.
 
 Run with `mvn spring-boot:run`, then open http://localhost:8080. Copy
 `.env.example` to `.env` and set `OPENCLAW_TOKEN` to the gateway token from

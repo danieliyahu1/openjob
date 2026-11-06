@@ -1,5 +1,6 @@
 package com.openjob;
 
+import jakarta.servlet.http.HttpSession;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,8 +24,8 @@ public class OpenJobApplication {
         }
 
         @PostMapping("/message")
-        String message(@RequestParam(defaultValue = "nothing") String message) {
-            return openClaw.reply(message);
+        String message(@RequestParam String message, HttpSession session) {
+            return openClaw.reply(message, session.getId());
         }
     }
 }
