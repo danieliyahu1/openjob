@@ -43,18 +43,23 @@ spec:
             - configMapRef:
                 name: openjob-config
           env:
+            # Fed by OCI Vault through the openjob-secrets ExternalSecret. The
+            # references are optional so the pod starts before the Vault entries
+            # exist; the chat starts working as soon as they do.
             - name: OPENCLAW_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: openjob-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
+                  optional: true
             - name: OPENJOB_API_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: openjob-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
+                  optional: true
             # Anonymous feedback is delivered to Telegram; without these the
-            # endpoint still accepts it and keeps it queued in SQLite.
+            # endpoint answers 503 instead of silently dropping the message.
             - name: TELEGRAM_FEEDBACK_BOT_TOKEN
               valueFrom:
                 secretKeyRef:

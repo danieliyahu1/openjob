@@ -39,16 +39,20 @@ spec:
             - name: gateway
               containerPort: 18789
           env:
+            # Fed by OCI Vault through the openjob-secrets ExternalSecret. Optional
+            # so the gateway starts before the Vault entries exist.
             - name: OPENCODE_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: openjob-secrets
                   key: OPENCODE_API_KEY
+                  optional: true
             - name: OPENCLAW_GATEWAY_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: openjob-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
+                  optional: true
             # The board client in the workspace talks back to the app.
             - name: OPENJOB_API_URL
               value: http://openjob.openjob.svc.cluster.local
@@ -57,6 +61,7 @@ spec:
                 secretKeyRef:
                   name: openjob-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
+                  optional: true
             # Optional: the skills read these instead of committed credentials.
             - name: LINKEDIN_EMAIL
               valueFrom:
