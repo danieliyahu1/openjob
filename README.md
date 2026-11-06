@@ -109,6 +109,17 @@ scraped through the `openjob-metrics` Service and `VMServiceScrape`. The
 `OpenJob / Overview` dashboard covers request rate, errors, latency, agent calls
 and their duration, gateway reachability, board size, JVM and container use.
 
+## Feedback
+
+The page has a Feedback button. `POST /api/feedback {"message": "..."}` accepts
+up to 1500 characters, rate-limits 5 submissions per 10 minutes per client, and
+forwards the text to a private Telegram chat in the same request. Delivery is
+best-effort: nothing is stored, so if Telegram fails the page asks the visitor to
+try again. The bot token and chat id come from the `openjob-feedback` Secret
+(`openjob_telegram_feedback_bot_token`, `openjob_telegram_feedback_chat_id` in
+Vault); until those exist the endpoint answers 503 and the dashboard shows the
+`disabled` outcome.
+
 Known limits: the CV workflow still needs Windows and Word and has no CV volume
 on the VM; a long agent run can outlive Cloudflare's 100 s origin timeout; and a
 LinkedIn challenge requires a human, which a headless agent cannot provide.

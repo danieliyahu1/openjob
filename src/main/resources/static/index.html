@@ -10,9 +10,45 @@
     #log li { padding: .5rem .75rem; border-radius: .5rem; white-space: pre-wrap; max-width: 85%; }
     .me { align-self: flex-end; background: #dbeafe; }
     .agent { align-self: flex-start; background: #f1f5f9; }
-    form { display: flex; gap: .5rem; margin-top: 1rem; }
-    input { flex: 1; padding: .5rem .75rem; font: inherit; }
+    #chat { display: flex; gap: .5rem; margin-top: 1rem; }
+    #chat input { flex: 1; padding: .5rem .75rem; font: inherit; }
     button { padding: .5rem 1rem; font: inherit; }
+
+    footer { display: flex; justify-content: flex-end; margin-top: 1.5rem; }
+    .feedback-open {
+      padding: .25rem .5rem; border: 0; background: transparent;
+      color: #64748b; font-size: .9rem; text-decoration: underline; cursor: pointer;
+    }
+    .feedback-open:hover, .feedback-open:focus-visible { color: #0f172a; }
+
+    #feedback-dialog {
+      width: min(100% - 2rem, 28rem); padding: 0;
+      border: 1px solid #e2e8f0; border-radius: .75rem; color: inherit;
+    }
+    #feedback-dialog::backdrop { background: rgba(15, 23, 42, .45); }
+    .fb-form { display: block; padding: 1.25rem; }
+    .fb-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+    .fb-head h2 { margin: 0; font-size: 1.15rem; }
+    .fb-close {
+      padding: 0 .25rem; border: 0; background: transparent;
+      color: #64748b; font-size: 1.5rem; line-height: 1; cursor: pointer;
+    }
+    .fb-form label { display: block; margin: .9rem 0 .35rem; font-size: .85rem; color: #475569; }
+    .fb-form textarea {
+      width: 100%; box-sizing: border-box; padding: .6rem .7rem;
+      border: 1px solid #e2e8f0; border-radius: .5rem;
+      font: inherit; resize: vertical;
+    }
+    .fb-form textarea:focus { outline: 2px solid #93c5fd; outline-offset: 1px; }
+    .fb-hint { margin: .35rem 0 .75rem; font-size: .75rem; color: #94a3b8; }
+    .fb-note { margin: 0 0 .75rem; min-height: 1.1em; font-size: .85rem; }
+    .fb-note.error { color: #b91c1c; }
+    .fb-note.ok { color: #15803d; }
+    .fb-send {
+      width: 100%; padding: .55rem; border: 0; border-radius: .5rem;
+      background: #0f172a; color: #fff; font: inherit; cursor: pointer;
+    }
+    .fb-send:disabled { opacity: .6; cursor: default; }
   </style>
 </head>
 <body>
@@ -21,6 +57,26 @@
     <input id="message" placeholder="Say something" autocomplete="off" autofocus>
     <button>Send</button>
   </form>
+
+  <footer>
+    <button type="button" id="feedback-open" class="feedback-open">Feedback</button>
+  </footer>
+
+  <dialog id="feedback-dialog" aria-labelledby="feedback-title">
+    <form id="feedback-form" class="fb-form" novalidate>
+      <div class="fb-head">
+        <h2 id="feedback-title">Send feedback</h2>
+        <button type="button" id="feedback-close" class="fb-close" aria-label="Close">&times;</button>
+      </div>
+      <label for="feedback-text">Feedback or content report</label>
+      <textarea id="feedback-text" name="message" rows="5" maxlength="1500"
+                placeholder="Tell us what happened or what we can improve"></textarea>
+      <p class="fb-hint">Anonymous</p>
+      <p id="feedback-note" class="fb-note" role="status"></p>
+      <button type="submit" id="feedback-send" class="fb-send">Send</button>
+    </form>
+  </dialog>
+
   <script>
     const log = document.getElementById('log');
     const form = document.getElementById('chat');
@@ -47,6 +103,66 @@
         pending.textContent = response.ok ? await response.text() : 'error ' + response.status;
       } catch (err) {
         pending.textContent = 'error: ' + err.message;
+      }
+    });
+
+    const dialog = document.getElementById('feedback-dialog');
+    const openFeedback = document.getElementById('feedback-open');
+    const closeFeedback = document.getElementById('feedback-close');
+    const feedbackForm = document.getElementById('feedback-form');
+    const feedbackText = document.getElementById('feedback-text');
+    const feedbackNote = document.getElementById('feedback-note');
+    const feedbackSend = document.getElementById('feedback-send');
+
+    function setNote(text, kind) {
+      feedbackNote.textContent = text;
+      feedbackNote.className = 'fb-note' + (kind ? ' ' + kind : '');
+    }
+
+    openFeedback.addEventListener('click', () => {
+      feedbackText.value = '';
+      feedbackSend.disabled = false;
+      setNote('', '');
+      dialog.showModal();
+      feedbackText.focus();
+    });
+
+    closeFeedback.addEventListener('click', () => dialog.close());
+
+    feedbackForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const message = feedbackText.value.trim();
+      if (!message) {
+        setNote('Write a few words first.', 'error');
+        feedbackText.focus();
+        return;
+      }
+      feedbackSend.disabled = true;
+      setNote('Sending…', '');
+      try {
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+        if (response.status === 202) {
+          setNote('Thanks — sent.', 'ok');
+          setTimeout(() => dialog.close(), 900);
+          return;
+        }
+        if (response.status === 429) {
+          setNote('Too many submissions. Try again in a bit.', 'error');
+          return;
+        }
+        if (response.status === 503) {
+          setNote('Feedback is not available right now.', 'error');
+          return;
+        }
+        setNote("Couldn't send feedback. Try again.", 'error');
+      } catch (err) {
+        setNote("Couldn't send feedback. Try again.", 'error');
+      } finally {
+        feedbackSend.disabled = false;
       }
     });
   </script>

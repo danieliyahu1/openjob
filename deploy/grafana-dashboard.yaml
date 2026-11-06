@@ -274,6 +274,23 @@ data:
               "legendFormat": "{{pod}}"
             }
           ]
+        },
+        {
+          "id": 15,
+          "type": "timeseries",
+          "title": "Feedback by outcome",
+          "description": "Anonymous feedback accepted by the page: delivered to Telegram, failed, dropped because no bot is configured, or rate-limited.",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 34 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "sum by (outcome) (rate(openjob_feedback_total{job=\"openjob\"}[5m]))",
+              "legendFormat": "{{outcome}}"
+            }
+          ]
         }
       ]
     }

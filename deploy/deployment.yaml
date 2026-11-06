@@ -53,6 +53,20 @@ spec:
                 secretKeyRef:
                   name: openjob-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
+            # Anonymous feedback is delivered to Telegram; without these the
+            # endpoint still accepts it and keeps it queued in SQLite.
+            - name: TELEGRAM_FEEDBACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-feedback
+                  key: TELEGRAM_FEEDBACK_BOT_TOKEN
+                  optional: true
+            - name: TELEGRAM_FEEDBACK_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-feedback
+                  key: TELEGRAM_FEEDBACK_CHAT_ID
+                  optional: true
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
