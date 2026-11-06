@@ -16,9 +16,15 @@ public class OpenJobApplication {
     @RestController
     static class MessageController {
 
+        private final OpenClawClient openClaw;
+
+        MessageController(OpenClawClient openClaw) {
+            this.openClaw = openClaw;
+        }
+
         @PostMapping("/message")
         String message(@RequestParam(defaultValue = "nothing") String message) {
-            return "your message is: " + message;
+            return openClaw.reply(message);
         }
     }
 }
