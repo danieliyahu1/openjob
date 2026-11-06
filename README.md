@@ -50,7 +50,9 @@ Deliberately left behind: `AGENTS.md`/`SOUL.md` boilerplate, `memory/`,
 
 ## Status
 
-Scaffold. No application code yet.
+Walking skeleton: a Spring Boot 3.5 / Java 21 app with one form and one endpoint
+(`POST /message` → `your message is: <message>`). Run with `mvn spring-boot:run`,
+then open http://localhost:8080.
 
 ## Plane
 
