@@ -126,15 +126,10 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 5
           volumeMounts:
-            - name: tmp
-              mountPath: /tmp
             # Chromium needs shared memory larger than the 64Mi default.
             - name: shm
               mountPath: /dev/shm
       volumes:
-        - name: tmp
-          emptyDir:
-            sizeLimit: 512Mi
         - name: shm
           emptyDir:
             medium: Memory
