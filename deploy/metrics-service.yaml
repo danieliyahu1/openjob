@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: openjob-metrics
+  namespace: openjob
+  labels:
+    app.kubernetes.io/name: openjob
+    app.kubernetes.io/component: metrics
+spec:
+  # Internal only: the public Service never exposes the actuator surface.
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: openjob
+    app.kubernetes.io/component: web
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: metrics

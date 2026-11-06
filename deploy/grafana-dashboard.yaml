@@ -1,0 +1,279 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openjob-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  openjob-overview.json: |
+    {
+      "uid": "openjob-overview",
+      "title": "OpenJob / Overview",
+      "tags": ["openjob"],
+      "timezone": "UTC",
+      "editable": false,
+      "schemaVersion": 39,
+      "refresh": "30s",
+      "time": { "from": "now-24h", "to": "now" },
+      "templating": { "list": [] },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Requests / min",
+          "description": "HTTP requests per minute served by the app.",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "reqpm", "decimals": 1 }, "overrides": [] },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "sum(rate(http_server_requests_seconds_count{job=\"openjob\"}[5m])) * 60",
+              "legendFormat": "requests"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Error ratio",
+          "description": "Share of responses with a 5xx status.",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 2 },
+                { "color": "red", "value": 10 }
+              ] }
+            },
+            "overrides": []
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "100 * sum(rate(http_server_requests_seconds_count{job=\"openjob\",outcome=\"SERVER_ERROR\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"openjob\"}[5m])), 0.000001)",
+              "legendFormat": "errors"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "p95 request latency",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+          "fieldConfig": { "defaults": { "unit": "s", "decimals": 2 }, "overrides": [] },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"openjob\"}[5m])))",
+              "legendFormat": "p95"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "OpenClaw gateway",
+          "description": "1 when the agent gateway accepts connections on its port.",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "decimals": 0,
+              "mappings": [
+                { "type": "value", "options": { "0": { "text": "unreachable", "color": "red" } } },
+                { "type": "value", "options": { "1": { "text": "reachable", "color": "green" } } }
+              ]
+            },
+            "overrides": []
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "openjob_openclaw_up{job=\"openjob\"}",
+              "legendFormat": "gateway"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Request rate by endpoint",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "sum by (uri) (rate(http_server_requests_seconds_count{job=\"openjob\"}[5m]))",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Agent calls by outcome",
+          "description": "Calls the app made to the OpenClaw gateway.",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "sum by (outcome) (rate(openjob_agent_requests_total{job=\"openjob\"}[5m]))",
+              "legendFormat": "{{outcome}}"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Agent call duration (p95)",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+          "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(openjob_agent_request_duration_seconds_bucket{job=\"openjob\"}[5m])))",
+              "legendFormat": "p95"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Board: applications by status",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "sum by (status) (openjob_applications{job=\"openjob\"})",
+              "legendFormat": "{{status}}"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "type": "stat",
+          "title": "Agent calls in flight",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 5, "w": 6, "x": 0, "y": 21 },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 }, "overrides": [] },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "openjob_agent_requests_in_flight{job=\"openjob\"}",
+              "legendFormat": "in flight"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "stat",
+          "title": "Since last successful agent call",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 5, "w": 6, "x": 6, "y": 21 },
+          "fieldConfig": { "defaults": { "unit": "s", "decimals": 0 }, "overrides": [] },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "time() - openjob_agent_last_success_timestamp_seconds{job=\"openjob\"}",
+              "legendFormat": "age"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "stat",
+          "title": "Database size",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 5, "w": 6, "x": 12, "y": 21 },
+          "fieldConfig": { "defaults": { "unit": "bytes", "decimals": 1 }, "overrides": [] },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "openjob_db_size_bytes{job=\"openjob\"}",
+              "legendFormat": "size"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "type": "stat",
+          "title": "Container restarts",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 5, "w": 6, "x": 18, "y": 21 },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 }, "overrides": [] },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"openjob\"})",
+              "legendFormat": "restarts"
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "type": "timeseries",
+          "title": "Container CPU",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+          "fieldConfig": { "defaults": { "unit": "none", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"openjob\",container!=\"\"}[5m]))",
+              "legendFormat": "{{pod}}"
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "type": "timeseries",
+          "title": "Container memory",
+          "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+          "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "prometheus", "uid": "VictoriaMetrics" },
+              "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"openjob\",container!=\"\"})",
+              "legendFormat": "{{pod}}"
+            }
+          ]
+        }
+      ]
+    }

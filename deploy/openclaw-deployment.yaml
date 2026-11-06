@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw
+  namespace: openjob
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/component: agent
+spec:
+  # One browser profile per agent; runs are sequential by design.
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openclaw
+      app.kubernetes.io/component: agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openclaw
+        app.kubernetes.io/component: agent
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      # The image already runs as the unprivileged `node` user.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: openclaw
+          image: ghcr.io/danieliyahu1/openjob-agent:bootstrap
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: gateway
+              containerPort: 18789
+          env:
+            - name: OPENCODE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-secrets
+                  key: OPENCODE_API_KEY
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+            # The board client in the workspace talks back to the app.
+            - name: OPENJOB_API_URL
+              value: http://openjob.openjob.svc.cluster.local
+            - name: OPENJOB_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+            # Optional: the skills read these instead of committed credentials.
+            - name: LINKEDIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-agent-credentials
+                  key: LINKEDIN_EMAIL
+                  optional: true
+            - name: LINKEDIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-agent-credentials
+                  key: LINKEDIN_PASSWORD
+                  optional: true
+            - name: EMAIL_PRIMARY_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-agent-credentials
+                  key: EMAIL_PRIMARY_ADDRESS
+                  optional: true
+            - name: EMAIL_PRIMARY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-agent-credentials
+                  key: EMAIL_PRIMARY_PASSWORD
+                  optional: true
+            - name: EMAIL_SECONDARY_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-agent-credentials
+                  key: EMAIL_SECONDARY_ADDRESS
+                  optional: true
+            - name: EMAIL_SECONDARY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-agent-credentials
+                  key: EMAIL_SECONDARY_PASSWORD
+                  optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            # Chromium is the expensive part; keep it inside one core.
+            requests:
+              cpu: 100m
+              memory: 768Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          startupProbe:
+            tcpSocket:
+              port: gateway
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 40
+          readinessProbe:
+            tcpSocket:
+              port: gateway
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: gateway
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 5
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # Chromium needs shared memory larger than the 64Mi default.
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 512Mi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
