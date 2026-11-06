@@ -99,13 +99,14 @@ spec:
             capabilities:
               drop: [ALL]
           resources:
-            # Chromium is the expensive part; keep it inside one core.
+            # Chromium is the expensive part: the browser image needs well over
+            # 2GiB once a page is loaded, so the limit leaves room for it.
             requests:
               cpu: 100m
-              memory: 768Mi
+              memory: 1Gi
             limits:
               cpu: 1000m
-              memory: 2Gi
+              memory: 3Gi
           startupProbe:
             httpGet:
               path: /startupz
