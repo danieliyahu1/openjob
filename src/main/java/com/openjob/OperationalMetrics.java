@@ -58,6 +58,7 @@ class OperationalMetrics {
         Gauge.builder("openjob.agent.last.success.timestamp", lastSuccessMillis,
                         value -> value.get() / 1000.0)
                 .description("Unix timestamp of the last successful agent call")
+                .baseUnit("seconds")
                 .register(registry);
         Gauge.builder("openjob.db.size.bytes", this, OperationalMetrics::databaseSize)
                 .description("Size of the SQLite database file")
