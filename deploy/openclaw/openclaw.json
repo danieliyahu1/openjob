@@ -14,5 +14,8 @@
         "workspace": "/home/node/.openclaw/workspace-openjob"
       }
     }
+  },
+  "browser": {
+    "noSandbox": true
   }
 }
