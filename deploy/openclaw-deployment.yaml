@@ -33,7 +33,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: openclaw
-          image: ghcr.io/danieliyahu1/openjob-agent:a11327e85ce63bb6ec822ab62277cf2c251355f6
+          image: ghcr.io/danieliyahu1/openjob-agent:2f82127eae9b694160273414446ad4fe9aa3e929
           imagePullPolicy: IfNotPresent
           ports:
             - name: gateway
