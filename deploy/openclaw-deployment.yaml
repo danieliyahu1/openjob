@@ -107,19 +107,22 @@ spec:
               cpu: 1000m
               memory: 2Gi
           startupProbe:
-            tcpSocket:
+            httpGet:
+              path: /startupz
               port: gateway
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 40
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /startupz
               port: gateway
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /healthz
               port: gateway
             initialDelaySeconds: 30
             periodSeconds: 20
