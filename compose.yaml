@@ -4,6 +4,9 @@ services:
     environment:
       OPENCODE_API_KEY: ${OPENCODE_API_KEY:?}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
+      PLANE_API_KEY: ${PLANE_API_KEY:-}
+      OPENJOB_API_URL: http://openjob:8080
+      OPENJOB_API_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
 
   openjob:
     build: .
@@ -11,5 +14,6 @@ services:
       OPENCLAW_URL: http://openclaw:18789
       OPENCLAW_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
       OPENCLAW_AGENT: openclaw/openjob
+      OPENJOB_API_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
     ports:
       - "8080:8080"
