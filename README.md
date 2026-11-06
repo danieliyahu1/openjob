@@ -86,7 +86,7 @@ Push to `main`. GitHub Actions runs the build, publishes
 then reconciles the `openjob` namespace on the OCI VM — `deploy/` is the only
 deployment source, and the image is pinned by commit SHA.
 
-- URL: https://openjob.danieliyahu.com (Cloudflare Access)
+- URL: https://openjob.danieliyahu.com (public)
 - `openjob` — the web app, one replica, SQLite on a 1 Gi `local-path` PVC
 - `openclaw` — the agent gateway, ClusterIP only, reached at `http://openclaw:18789`
 
