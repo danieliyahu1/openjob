@@ -59,6 +59,13 @@ Run with `mvn spring-boot:run`, then open http://localhost:8080. Copy
 `~/.openclaw/openclaw.json`; the Gateway also needs
 `gateway.http.endpoints.chatCompletions.enabled = true`.
 
+## Docker
+
+`compose.yaml` runs both pieces: OpenClaw `2026.10.10` (one `openjob` agent,
+config baked in from `deploy/openclaw/openclaw.json`) and this app talking to it
+at `http://openclaw:18789`. Put `OPENCODE_API_KEY` and `OPENCLAW_GATEWAY_TOKEN`
+in `.env`, then `docker compose up --build`. Only port 8080 is published.
+
 ## Plane
 
 - Workspace: `akatsukiIL`

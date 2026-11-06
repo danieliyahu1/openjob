@@ -1,0 +1,15 @@
+services:
+  openclaw:
+    build: ./deploy/openclaw
+    environment:
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:?}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
+
+  openjob:
+    build: .
+    environment:
+      OPENCLAW_URL: http://openclaw:18789
+      OPENCLAW_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
+      OPENCLAW_AGENT: openclaw/openjob
+    ports:
+      - "8080:8080"

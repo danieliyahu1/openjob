@@ -1,0 +1,18 @@
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "port": 18789,
+    "auth": { "mode": "token" },
+    "http": { "endpoints": { "chatCompletions": { "enabled": true } } }
+  },
+  "agents": {
+    "defaults": { "model": { "primary": "opencode-go/deepseek-v4.1-flash" } },
+    "entries": {
+      "openjob": {
+        "name": "openjob",
+        "workspace": "/home/node/.openclaw/workspace-openjob"
+      }
+    }
+  }
+}
