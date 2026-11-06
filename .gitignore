@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+out/
+.next/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+coverage/
+.playwright/
+.tmp/
