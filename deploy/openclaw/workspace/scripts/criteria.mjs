@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-// Reads or writes the job match criteria for one user. Replaces plane-criteria.mjs.
+// Reads or writes the job match criteria for one user. Ships in the image at
+// /opt/openjob/agent-scripts, outside the writable workspace.
 import { readFileSync } from "node:fs";
 import process from "node:process";
-
-const BASE = (process.env.OPENJOB_API_URL || "http://openjob:8080").replace(/\/+$/, "");
-const TOKEN = process.env.OPENJOB_API_TOKEN;
 
 const fail = (message, code = 1) => {
   console.error(`ERROR: ${message}`);
   process.exit(code);
 };
+
+const BASE = (process.env.OPENJOB_API_URL || "").replace(/\/+$/, "");
+if (!BASE) fail("OPENJOB_API_URL is not set");
 
 const args = {};
 const argv = process.argv.slice(2);
@@ -32,10 +33,9 @@ const readWorkspaceId = () => {
   }
 };
 
-const AGENT = args.agent || readWorkspaceId();
-if (!TOKEN) fail("OPENJOB_API_TOKEN is not set");
+const AGENT = readWorkspaceId();
 
-const headers = { "X-OpenJob-Token": TOKEN, "X-OpenJob-Agent": AGENT };
+const headers = { "X-OpenJob-Agent": AGENT };
 
 if (args.set !== undefined) {
   if (!args.set.trim()) fail("--set needs the criteria text");

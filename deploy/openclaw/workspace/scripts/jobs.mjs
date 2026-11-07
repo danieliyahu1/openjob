@@ -1,16 +1,19 @@
 #!/usr/bin/env node
-// Job board client for the OpenJob API. Replaces scripts/plane-jobs.mjs.
+// Job board client for the OpenJob API. Ships in the image at
+// /opt/openjob/agent-scripts, outside the writable workspace, so the agent
+// cannot change what the exec allowlist runs.
 import { readFileSync } from "node:fs";
 import process from "node:process";
 
-const BASE = (process.env.OPENJOB_API_URL || "http://openjob:8080").replace(/\/+$/, "");
-const TOKEN = process.env.OPENJOB_API_TOKEN;
 const STATUSES = ["found", "applied", "blocked"];
 
 const fail = (message, code = 1) => {
   console.error(`ERROR: ${message}`);
   process.exit(code);
 };
+
+const BASE = (process.env.OPENJOB_API_URL || "").replace(/\/+$/, "");
+if (!BASE) fail("OPENJOB_API_URL is not set");
 
 const parseArgs = (argv) => {
   const args = {};
@@ -36,12 +39,11 @@ const readWorkspaceId = () => {
 };
 
 const call = async (path, init = {}) => {
-  if (!TOKEN) fail("OPENJOB_API_TOKEN is not set");
   let response;
   try {
     response = await fetch(BASE + path, {
       ...init,
-      headers: { "X-OpenJob-Token": TOKEN, "X-OpenJob-Agent": AGENT, ...(init.headers || {}) },
+      headers: { "X-OpenJob-Agent": AGENT, ...(init.headers || {}) },
     });
   } catch (error) {
     fail(`cannot reach ${BASE}: ${error.message}`);
@@ -111,11 +113,11 @@ const commands = {
 
 const [command, ...rest] = process.argv.slice(2);
 if (!command || !commands[command]) {
-  fail(`usage: jobs.mjs <${Object.keys(commands).join("|")}> [--agent <id>] [options]`);
+  fail(`usage: jobs.mjs <${Object.keys(commands).join("|")}> [options]`);
 }
 
 const args = parseArgs(rest);
-const AGENT = args.agent || readWorkspaceId();
+const AGENT = readWorkspaceId();
 
 try {
   await commands[command](args);

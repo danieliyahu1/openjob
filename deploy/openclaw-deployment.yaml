@@ -81,15 +81,9 @@ spec:
                   name: openjob-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
                   optional: true
-            # The board client in the workspace talks back to the app.
+            # The board client shipped in the image talks back to the app.
             - name: OPENJOB_API_URL
               value: http://openjob.openjob.svc.cluster.local
-            - name: OPENJOB_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: openjob-secrets
-                  key: OPENCLAW_GATEWAY_TOKEN
-                  optional: true
             # Optional: the skills read these instead of committed credentials.
             - name: LINKEDIN_EMAIL
               valueFrom:

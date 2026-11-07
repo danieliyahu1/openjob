@@ -3,7 +3,6 @@ package com.openjob;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Set;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
@@ -35,18 +34,15 @@ public class OpenJobApplication {
         private final UserAgentStore userAgents;
         private final ProvisionerClient provisioner;
         private final OperationalMetrics metrics;
-        private final String apiToken;
 
         MessageController(OpenClawClient openClaw, ApplicationStore store,
                           UserAgentStore userAgents, ProvisionerClient provisioner,
-                          OperationalMetrics metrics,
-                          @Value("${OPENJOB_API_TOKEN:${OPENCLAW_TOKEN:}}") String apiToken) {
+                          OperationalMetrics metrics) {
             this.openClaw = openClaw;
             this.store = store;
             this.userAgents = userAgents;
             this.provisioner = provisioner;
             this.metrics = metrics;
-            this.apiToken = apiToken;
         }
 
         @PostMapping("/message")
@@ -71,30 +67,29 @@ public class OpenJobApplication {
             }
         }
 
+        /**
+         * The agent id is the credential: it is the random slug the provisioner
+         * writes into the workspace, so it is only known to that account's agent.
+         * There is deliberately no shared token; see the README.
+         */
         @GetMapping("/api/applications")
-        List<ApplicationStore.Job> list(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                                        @RequestHeader("X-OpenJob-Agent") String agent,
+        List<ApplicationStore.Job> list(@RequestHeader("X-OpenJob-Agent") String agent,
                                         @RequestParam(required = false) String status) {
-            requireToken(token);
             return store.list(owner(agent), status);
         }
 
         @PostMapping("/api/applications")
-        long add(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                 @RequestHeader("X-OpenJob-Agent") String agent,
+        long add(@RequestHeader("X-OpenJob-Agent") String agent,
                  @RequestParam String company,
                  @RequestParam String title,
                  @RequestParam(required = false) String url) {
-            requireToken(token);
             return store.add(owner(agent), company, title, url);
         }
 
         @PatchMapping("/api/applications/{id}")
-        void mark(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                  @RequestHeader("X-OpenJob-Agent") String agent,
+        void mark(@RequestHeader("X-OpenJob-Agent") String agent,
                   @PathVariable long id,
                   @RequestParam String status) {
-            requireToken(token);
             if (!STATUSES.contains(status)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "unknown status: " + status);
             }
@@ -104,9 +99,7 @@ public class OpenJobApplication {
         }
 
         @GetMapping("/api/criteria")
-        String criteria(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                        @RequestHeader("X-OpenJob-Agent") String agent) {
-            requireToken(token);
+        String criteria(@RequestHeader("X-OpenJob-Agent") String agent) {
             String text = store.criteria(owner(agent));
             if (text == null) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no criteria for this user");
@@ -115,10 +108,8 @@ public class OpenJobApplication {
         }
 
         @PostMapping("/api/criteria")
-        void saveCriteria(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                          @RequestHeader("X-OpenJob-Agent") String agent,
+        void saveCriteria(@RequestHeader("X-OpenJob-Agent") String agent,
                           @RequestParam String text) {
-            requireToken(token);
             store.saveCriteria(owner(agent), text);
         }
 
@@ -128,12 +119,6 @@ public class OpenJobApplication {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "unknown agent");
             }
             return email;
-        }
-
-        private void requireToken(String token) {
-            if (apiToken.isEmpty() || !apiToken.equals(token)) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
-            }
         }
     }
 }

@@ -13,18 +13,27 @@ services:
       - state:/home/node/.openclaw/state
       - agents:/home/node/.openclaw/agents
 
+  workspace-sync:
+    build: ./deploy/openclaw
+    command: ["node", "/opt/openjob/sync-workspace.mjs"]
+    environment:
+      WORKSPACES_ROOT: /home/node/.openclaw/workspaces
+      TEMPLATE_WORKSPACE: /home/node/.openclaw/workspace
+    volumes:
+      - workspaces:/home/node/.openclaw/workspaces
+
   openclaw:
     build: ./deploy/openclaw
     depends_on:
       config-init:
         condition: service_completed_successfully
+      workspace-sync:
+        condition: service_completed_successfully
     environment:
       OPENCLAW_CONFIG_PATH: /home/node/.openclaw/config/openclaw.json
       OPENCODE_API_KEY: ${OPENCODE_API_KEY:?}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
-      PLANE_API_KEY: ${PLANE_API_KEY:-}
       OPENJOB_API_URL: http://openjob:8080
-      OPENJOB_API_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
     volumes:
       - workspaces:/home/node/.openclaw/workspaces
       - config:/home/node/.openclaw/config
@@ -35,7 +44,7 @@ services:
     build: ./deploy/openclaw
     command: ["node", "/opt/openjob/provisioner.mjs"]
     environment:
-      OPENCLAW_GATEWAY_URL: ws://openclaw:18789
+      OPENCLAW_GATEWAY_URL: http://openclaw:18789
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
       WORKSPACES_ROOT: /home/node/.openclaw/workspaces
       TEMPLATE_WORKSPACE: /home/node/.openclaw/workspace
@@ -48,7 +57,9 @@ services:
       OPENCLAW_URL: http://openclaw:18789
       OPENCLAW_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
       PROVISIONER_URL: http://provisioner:18790
-      OPENJOB_API_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
+      OPENJOB_DB_PATH: /data/openjob.db
+    volumes:
+      - appdata:/data
     ports:
       - "8080:8080"
 
@@ -57,3 +68,4 @@ volumes:
   config:
   state:
   agents:
+  appdata:
