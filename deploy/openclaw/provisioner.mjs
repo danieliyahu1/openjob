@@ -6,13 +6,14 @@
 // Filesystem work happens here; everything else goes through the gateway's
 // admin HTTP RPC. Deliberately no `openclaw` CLI spawns: each one is a fresh
 // Node process, and several in a row exceed this sidecar's memory limit.
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT || 18790);
 const ROOT = process.env.WORKSPACES_ROOT || "/home/node/.openclaw/workspaces";
 const TEMPLATE = process.env.TEMPLATE_WORKSPACE || "/home/node/.openclaw/workspace";
 const TEMPLATE_AGENT = process.env.TEMPLATE_AGENT || "main";
+const POLICY_FILE = process.env.EXEC_APPROVALS_FILE || "/opt/openjob/exec-approvals.json";
 const DRY_RUN = process.env.PROVISION_DRY_RUN === "1";
 const SLUG = /^u-[0-9a-f]{12}$/;
 
@@ -30,6 +31,7 @@ const required = (name) => {
 
 const GATEWAY = required("OPENCLAW_GATEWAY_URL");
 const TOKEN = required("OPENCLAW_GATEWAY_TOKEN");
+const POLICY = JSON.parse(readFileSync(POLICY_FILE, "utf8"));
 
 async function rpc(method, params = {}) {
   const response = await fetch(`${GATEWAY}/api/v1/admin/rpc`, {
@@ -74,14 +76,18 @@ async function applyEntry(slug, workspace) {
   });
 }
 
+/**
+ * Copy the policy that ships with the image onto this agent. The persisted
+ * state owns approvals — the image only seeds them, so a policy change reaches
+ * existing accounts on their next provisioning call.
+ */
 async function ensureApproval(slug) {
   const current = await rpc("exec.approvals.get", {});
   const document = current?.file ?? current;
   if (!document?.agents) throw new Error("unexpected approvals document");
-  if (document.agents[slug]) return;
-  const template = document.agents[TEMPLATE_AGENT] || Object.values(document.agents)[0];
-  if (!template) throw new Error("no approvals to copy");
-  document.agents[slug] = { ...template };
+  const policy = POLICY.agents?.[TEMPLATE_AGENT] ?? Object.values(POLICY.agents ?? {})[0];
+  if (!policy) throw new Error(`no approvals policy in ${POLICY_FILE}`);
+  document.agents[slug] = { ...policy };
   await rpc("exec.approvals.set", { file: document, baseHash: current.hash });
 }
 

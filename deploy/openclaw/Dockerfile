@@ -5,11 +5,11 @@ COPY openclaw.json /home/node/.openclaw/openclaw.json
 COPY openclaw.json /opt/openjob/openclaw.default.json
 COPY merge-config.mjs /opt/openjob/merge-config.mjs
 COPY sync-workspace.mjs /opt/openjob/sync-workspace.mjs
-# Legacy approvals document: the image entrypoint runs `openclaw doctor --fix`,
-# which imports it into the state database. Its content must stay identical to
-# the persisted policy: doctor refuses to overwrite a security policy it did not
-# write, so changing this file requires a matching state migration.
-COPY --chown=node:node exec-approvals.json /home/node/.openclaw/exec-approvals.json
+# The policy is not a legacy approval file any more: OpenClaw's doctor refuses to
+# overwrite approvals it did not write, so shipping this at
+# /home/node/.openclaw/exec-approvals.json breaks every restart once the state
+# has agents. The provisioner reads it from /opt and seeds each agent via RPC.
+COPY exec-approvals.json /opt/openjob/exec-approvals.json
 COPY --chown=node:node workspace /home/node/.openclaw/workspace
 COPY provisioner.mjs /opt/openjob/provisioner.mjs
 # Mount points have to be writable by the node user on the first run, both in
