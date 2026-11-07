@@ -58,8 +58,9 @@ account gets its own agent and workspace, created on demand: the app stores
 provisioner sidecar in the agent pod creates the agent and workspace when they
 are missing. The new agent's config is a copy of the template agent `main` with
 only its name and workspace changed, so editing `main` also changes every agent
-created afterwards. Workspaces live on an emptyDir, so they are recreated after
-any agent pod restart. The conversation id is still the email.
+created afterwards. Workspaces, the gateway's shared state (scheduler and run
+history), and per-agent sessions live on the `openclaw-data` PVC, so they
+survive agent pod restarts. The conversation id is still the email.
 
 Applications are stored in SQLite (`openjob.db`, table `applications`) and managed
 through `GET/POST /api/applications` and `PATCH /api/applications/{id}`, guarded by
@@ -104,7 +105,8 @@ deployment source, and the image is pinned by commit SHA.
 
 - URL: https://openjob.danieliyahu.com (public)
 - `openjob` — the web app, one replica, SQLite on a 1 Gi `local-path` PVC
-- `openclaw` — the agent gateway, ClusterIP only, reached at `http://openclaw:18789`
+- `openclaw` — the agent gateway, ClusterIP only, reached at `http://openclaw:18789`;
+  workspaces, scheduler state and sessions on a 5 Gi `local-path` PVC
 
 Secrets come from OCI Vault through the `oci-vault` `ClusterSecretStore`; only
 the entry names live in Git:

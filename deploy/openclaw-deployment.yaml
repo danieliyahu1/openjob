@@ -32,6 +32,23 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # subPath mounts need their directories to exist on the volume, and
+        # creating them here leaves them owned by the node user.
+        - name: prepare-data
+          image: ghcr.io/danieliyahu1/openjob-agent:28acb0819f70cd17d21af342d83ce83b3efac65e
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - mkdir -p /data/workspaces /data/state /data/agents
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /data
       containers:
         - name: openclaw
           image: ghcr.io/danieliyahu1/openjob-agent:28acb0819f70cd17d21af342d83ce83b3efac65e
@@ -139,9 +156,19 @@ spec:
             # Chromium needs shared memory larger than the 64Mi default.
             - name: shm
               mountPath: /dev/shm
-            # Per-user workspaces, written by the provisioner sidecar.
-            - name: workspaces
+            # Persistent data. The image's config and workspace template are
+            # deliberately left in the container so updates keep applying.
+            - name: data
               mountPath: /home/node/.openclaw/workspaces
+              subPath: workspaces
+            # Automations, run history, approvals and registries.
+            - name: data
+              mountPath: /home/node/.openclaw/state
+              subPath: state
+            # Per-agent sessions, transcripts, memory and auth state.
+            - name: data
+              mountPath: /home/node/.openclaw/agents
+              subPath: agents
         - name: provisioner
           image: ghcr.io/danieliyahu1/openjob-agent:28acb0819f70cd17d21af342d83ce83b3efac65e
           imagePullPolicy: IfNotPresent
@@ -181,12 +208,14 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
           volumeMounts:
-            - name: workspaces
+            - name: data
               mountPath: /home/node/.openclaw/workspaces
+              subPath: workspaces
       volumes:
         - name: shm
           emptyDir:
             medium: Memory
             sizeLimit: 512Mi
-        - name: workspaces
-          emptyDir: {}
+        - name: data
+          persistentVolumeClaim:
+            claimName: openclaw-data

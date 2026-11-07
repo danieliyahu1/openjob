@@ -9,6 +9,8 @@ services:
       OPENJOB_API_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
     volumes:
       - workspaces:/home/node/.openclaw/workspaces
+      - state:/home/node/.openclaw/state
+      - agents:/home/node/.openclaw/agents
 
   provisioner:
     build: ./deploy/openclaw
@@ -33,3 +35,5 @@ services:
 
 volumes:
   workspaces:
+  state:
+  agents:
