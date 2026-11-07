@@ -41,7 +41,7 @@ const call = async (path, init = {}) => {
   return text;
 };
 
-const owner = (args) => args.user || fail("--user is required (the browser session id)");
+const owner = (args) => args.user || fail("--user is required (the signed-in email)");
 
 const normalize = (url) => (url || "").trim().replace(/\/+$/, "");
 

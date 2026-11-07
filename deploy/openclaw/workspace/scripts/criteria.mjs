@@ -22,7 +22,7 @@ for (let i = 0; i < argv.length; i += 1) {
   i += 1;
 }
 
-const userId = args.user || fail("--user is required (the browser session id)");
+const userId = args.user || fail("--user is required (the signed-in email)");
 if (!TOKEN) fail("OPENJOB_API_TOKEN is not set");
 
 const headers = { "X-OpenJob-Token": TOKEN };

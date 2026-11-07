@@ -46,11 +46,12 @@ public class OpenJobApplication {
 
         @PostMapping("/message")
         String message(@RequestParam String message, HttpSession session) {
-            String context = "[[session:" + session.getId() + "]] ";
+            String user = (String) session.getAttribute(AuthController.USER);
+            String context = "[[session:" + user + "]] ";
             long started = System.nanoTime();
             metrics.agentStarted();
             try {
-                String reply = openClaw.reply(context + message, session.getId());
+                String reply = openClaw.reply(context + message, user);
                 metrics.agentFinished("success", System.nanoTime() - started);
                 return reply;
             } catch (RuntimeException | Error failure) {

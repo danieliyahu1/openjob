@@ -53,9 +53,9 @@ Deliberately left behind: `AGENTS.md`/`SOUL.md` boilerplate, `memory/`,
 Walking skeleton: a Spring Boot 3.5 / Java 21 app with a chat page and one
 endpoint. `POST /message` forwards the text to the local OpenClaw Gateway
 (`POST /v1/chat/completions`, agent `openclaw/main`) and returns the agent's
-reply. The conversation id is the servlet session id, so each browser gets its
-own thread with the agent; after 30 idle minutes the cookie expires and the next
-message starts a new one.
+reply. The conversation id is the signed-in email, so each account keeps one
+thread with the agent, and the job board and criteria the agent writes are
+scoped to that email.
 
 Applications are stored in SQLite (`openjob.db`, table `applications`) and managed
 through `GET/POST /api/applications` and `PATCH /api/applications/{id}`, guarded by
