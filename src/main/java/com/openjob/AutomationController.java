@@ -175,11 +175,13 @@ class AutomationController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
-    /** The gateway did not answer; that is an outage, not a missing job. */
+    /** The gateway did not complete the call; that is not a missing job. */
     @ExceptionHandler(AutomationsClient.GatewayException.class)
     ResponseEntity<Map<String, String>> gatewayDown(AutomationsClient.GatewayException problem) {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("error", "GATEWAY_UNAVAILABLE",
-                        "message", "the scheduler is not reachable, try again"));
+                        "message", problem.unreachable()
+                                ? "the scheduler is not reachable, so nothing was changed"
+                                : "the scheduler refused the request; check the automation details"));
     }
 }

@@ -195,6 +195,17 @@
       }
     }
 
+    /** The server's own wording when it has one, so the note does not guess. */
+    async function problem(response, fallback) {
+      try {
+        const body = await response.json();
+        if (body && body.message) return body.message;
+      } catch (ignored) {
+        // no body to read; fall back to the status
+      }
+      return fallback + ' (' + response.status + ').';
+    }
+
     async function load() {
       const response = await fetch('/api/automations');
       if (response.status === 401) {
@@ -202,7 +213,7 @@
         return;
       }
       if (!response.ok) {
-        setNote('Could not load automations (' + response.status + ').', 'error');
+        setNote(await problem(response, 'Could not load automations'), 'error');
         return;
       }
       render(await response.json());
@@ -216,7 +227,7 @@
         return;
       }
       if (!response.ok) {
-        setNote('Could not update "' + job.name + '" (' + response.status + ').', 'error');
+        setNote(await problem(response, 'Could not update "' + job.name + '"'), 'error');
         return;
       }
       await load();
@@ -245,7 +256,7 @@
           return;
         }
         if (!response.ok) {
-          setNote('Could not create the automation (' + response.status + ').', 'error');
+          setNote(await problem(response, 'Could not create the automation'), 'error');
           return;
         }
         form.reset();

@@ -99,9 +99,9 @@ class AutomationsClient {
                 throw new JobNotFoundException();
             }
             throw new GatewayException(
-                    "gateway rejected " + method + ": " + failure.getStatusCode(), failure);
+                    "gateway rejected " + method + ": " + failure.getStatusCode(), failure, false);
         } catch (ResourceAccessException unreachable) {
-            throw new GatewayException("gateway unreachable for " + method, unreachable);
+            throw new GatewayException("gateway unreachable for " + method, unreachable, true);
         }
         if (response == null || !response.ok()) {
             String code = response == null || response.error() == null
@@ -111,16 +111,24 @@ class AutomationsClient {
             }
             String message = response == null || response.error() == null
                     ? "no response" : response.error().message();
-            throw new GatewayException("gateway rejected " + method + ": " + message, null);
+            throw new GatewayException("gateway rejected " + method + ": " + message, null, false);
         }
         return response.payload();
     }
 
-    /** The gateway could not answer; this is an outage, not a missing job. */
+    /** The gateway could not complete the call; this is not a missing job. */
     static class GatewayException extends RuntimeException {
 
-        GatewayException(String message, Throwable cause) {
+        private final boolean unreachable;
+
+        GatewayException(String message, Throwable cause, boolean unreachable) {
             super(message, cause);
+            this.unreachable = unreachable;
+        }
+
+        /** True when no answer arrived at all, false when the gateway refused. */
+        boolean unreachable() {
+            return unreachable;
         }
     }
 
