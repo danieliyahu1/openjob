@@ -20,7 +20,7 @@ Search: `GET https://hiremetech.com/api/jobs/search`
 - Valid filter values: `GET https://hiremetech.com/api/jobs/filter-options`
   (`remote`, `job_level`, `employment_type`, `ai_category`, `tech`, `locations`, …)
 
-Building the query from the criteria (`node scripts/criteria.mjs`):
+Building the query from the criteria (`node /opt/openjob/agent-scripts/criteria.mjs`):
 
 - Role keywords → `title`; location → `country` / `location` / `state` / `israeli`;
   work mode → `remote`; seniority → `job_level`; stack → `tech`; AI focus → `ai_category`.
@@ -49,10 +49,7 @@ Useful fields per result: `id`, `job_url`, `title`, `company_name`,
 | --- | --- |
 | `--title` | `title` |
 | `--company` | `company_name`, else `company.name`, else `Not disclosed` when the employer is masked (`employer_masked` / empty) |
-| `--location` | `location.basic.city`; when the city is empty use `location.basic.country` |
-| `--work-mode` | `location.work_model.display_tag` |
 | `--url` | `https://hiremetech.com/job/<id>` |
-| `--id` | the numeric id |
 
 ## 5. Apply destination (verified 2026-11-06)
 

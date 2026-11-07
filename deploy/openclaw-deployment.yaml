@@ -55,6 +55,24 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+        # Copies the provided skills and AGENTS.md into every existing
+        # workspace so a skill fix reaches users who already have one.
+        - name: sync-workspaces
+          image: ghcr.io/danieliyahu1/openjob-agent:dd4d7284eece88db06c8d815dd45e7e65a33f632
+          imagePullPolicy: IfNotPresent
+          command: ["node", "/opt/openjob/sync-workspace.mjs"]
+          env:
+            - name: WORKSPACES_ROOT
+              value: /data/workspaces
+            - name: TEMPLATE_WORKSPACE
+              value: /home/node/.openclaw/workspace
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /data
       containers:
         - name: openclaw
           image: ghcr.io/danieliyahu1/openjob-agent:e9b8a83b5c10517b2f248f7336c7f279fa234c35

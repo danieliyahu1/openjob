@@ -22,7 +22,7 @@ definition, so never submit through it — record the posting as `!` instead.
 ## 2. Discovery
 
 Search and filter with the terms in the criteria (`node
-scripts/criteria.mjs`) — role keywords, location, experience level, remote /
+/opt/openjob/agent-scripts/criteria.mjs`) — role keywords, location, experience level, remote /
 hybrid / on-site. Read a posting when the card text
 is not enough to evaluate it.
 
@@ -43,10 +43,7 @@ UI only: no undocumented endpoints, no `linkedin.com/api/*`, no scraping tools.
 | --- | --- |
 | `--title` | posting title |
 | `--company` | company on the posting; if hidden, `Not disclosed` |
-| `--location` | posting location (city, plus country when shown) |
-| `--work-mode` | exactly one of `Remote`, `Hybrid`, `On-site` |
 | `--url` | normalized URL from §3 |
-| `--id` | numeric job id from §3 |
 
 ## 5. Failure modes
 

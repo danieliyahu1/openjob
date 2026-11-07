@@ -29,6 +29,12 @@ jobs:
           cache: maven
       - name: Build and test
         run: mvn -B -ntp verify
+      - name: Check and test the sidecar scripts
+        run: |
+          for file in deploy/openclaw/*.mjs deploy/openclaw/agent-scripts/*.mjs; do
+            node --check "$file"
+          done
+          node --test deploy/openclaw/sync-workspace.test.mjs
       - name: Validate Kubernetes manifests
         run: |
           curl -sSL -o /tmp/kubeconform.tar.gz \

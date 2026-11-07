@@ -11,7 +11,7 @@ truth**, attach that tailored copy, review, and submit.
 
 ## Job board
 
-Job and application state live in the OpenJob app. Only `scripts/jobs.mjs` talks
+Job and application state live in the OpenJob app. Only `/opt/openjob/agent-scripts/jobs.mjs` talks
 to it; never call the API yourself and never write job data to local files.
 
 Every user message belongs to the account that owns this workspace. The scripts
@@ -19,10 +19,10 @@ read the owner from `.openjob-id` themselves; never pass a user or agent id. If
 `.openjob-id` is missing, STOP and report it.
 
 ```bash
-node scripts/jobs.mjs check --url "<posting url>"
-node scripts/jobs.mjs add   --company "<c>" --title "<t>" --url "<url>"
-node scripts/jobs.mjs mark  --id <id> --status applied
-node scripts/jobs.mjs list  [--status found]
+node /opt/openjob/agent-scripts/jobs.mjs check --url "<posting url>"
+node /opt/openjob/agent-scripts/jobs.mjs add   --company "<c>" --title "<t>" --url "<url>"
+node /opt/openjob/agent-scripts/jobs.mjs mark  --id <id> --status applied
+node /opt/openjob/agent-scripts/jobs.mjs list  [--status found]
 ```
 
 Statuses are exactly `found`, `applied`, `blocked`.
@@ -107,7 +107,7 @@ Searching and applying have different rules, and they happen in different places
 - **The CV.** Pull identity and contact details from it: name, email, phone, and
   the hyperlinks embedded in it (personal website, LinkedIn, GitHub, mailto).
   Read them with the cv-adjustment skill's reader
-  (`skills/cv-adjustment/scripts/read_docx.py`), which prints `LINK:` targets.
+  (`skills/cv-adjustment/scripts/dump_docx.cjs`), which prints `LINK:` targets.
   The master CV lives in the workspace under `original cv/` (for example
   `original cv/java israel/<name> resume.docx`).
 - **If the CV is not in the workspace, STOP** and ask the user to provide it.
@@ -123,7 +123,7 @@ Searching and applying have different rules, and they happen in different places
 1. **Get the posting URL(s).** If several, do them one at a time.
 2. **Check you haven't already applied.** From your workspace:
    ```bash
-   node scripts/jobs.mjs check --url "<posting url>"
+   node /opt/openjob/agent-scripts/jobs.mjs check --url "<posting url>"
    ```
    - exit 0 (`UNIQUE`) → proceed (record it in step 12).
    - exit 2 (`DUPLICATE id=<id> status=<status>`):
@@ -175,12 +175,12 @@ Searching and applying have different rules, and they happen in different places
     message on the page.
 12. **Record the outcome.** Keep state in the app only, never in local files:
     - Submitted successfully:
-      `node scripts/jobs.mjs mark --id <id> --status applied`
+      `node /opt/openjob/agent-scripts/jobs.mjs mark --id <id> --status applied`
     - Attempted but not completed (login wall, closed posting, broken ATS):
-      `node scripts/jobs.mjs mark --id <id> --status blocked`
+      `node /opt/openjob/agent-scripts/jobs.mjs mark --id <id> --status blocked`
     - Posting not on the board yet:
       ```bash
-      node scripts/jobs.mjs add \
+      node /opt/openjob/agent-scripts/jobs.mjs add \
         --company "<company>" \
         --title "<title>" \
         --url "<posting url>" \
@@ -215,7 +215,7 @@ Searching and applying have different rules, and they happen in different places
 6. **Track applications.** Statuses: `found` = saved, not applied (the only value
    you may apply to); `applied` = submitted; `blocked` = attempted but did not
    complete. Apply only to rows marked `found`; never to `applied` or `blocked`.
-   Update state only through `scripts/jobs.mjs`.
+   Update state only through `/opt/openjob/agent-scripts/jobs.mjs`.
 7. Keep the submitted CV consistent with the cv-adjustment skill: CV = truth.
 8. **Authenticated vs non-authenticated application.** We apply only to
    non-authenticated applications, meaning the form at wherever the platform

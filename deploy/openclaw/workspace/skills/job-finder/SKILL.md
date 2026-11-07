@@ -11,8 +11,8 @@ procedure for every board; boards we already worked out have notes in
 
 ## The board
 
-Job state lives in the OpenJob app. `scripts/jobs.mjs` is the only writer; it
-talks to the app's API using `OPENJOB_API_URL` and `OPENJOB_API_TOKEN`, which are
+The job state lives in the OpenJob app. `/opt/openjob/agent-scripts/jobs.mjs` is
+the only writer; it talks to the app's API using `OPENJOB_API_URL`, which is
 already in the environment. Never call the API yourself and never write job data
 to local files.
 
@@ -41,14 +41,14 @@ The match criteria are the user's own input, stored per account — never in the
 repo and never in local files. Read them fresh at the start of every run:
 
 ```bash
-node scripts/criteria.mjs
+node /opt/openjob/agent-scripts/criteria.mjs
 ```
 
 - exit 0 → use the printed markdown as the criteria for this run
 - exit 2 → nothing saved yet: ask the user for their criteria (roles, seniority,
   location, must-haves, dealbreakers), then save the answer and continue:
   ```bash
-  node scripts/criteria.mjs --set "<their answer>"
+  node /opt/openjob/agent-scripts/criteria.mjs --set "<their answer>"
   ```
 - any other exit code → STOP and report the error
 
@@ -112,7 +112,7 @@ added the notes.
 
 1. **Read the criteria** for this user:
    ```bash
-   node scripts/criteria.mjs
+   node /opt/openjob/agent-scripts/criteria.mjs
    ```
    Skip this step when the user is only asking to save a specific posting they
    already picked — criteria are for searching.
@@ -125,14 +125,14 @@ added the notes.
      - criteria met → continue to 3b
    - **3b. Verify it is unique.** From your workspace:
      ```bash
-     node scripts/jobs.mjs check --url "<normalized url>"
+     node /opt/openjob/agent-scripts/jobs.mjs check --url "<normalized url>"
      ```
      - exit 0 (`UNIQUE`) → continue to 3c
      - exit 2 (`DUPLICATE id=… status=…`) → skip to the next attempt
      - any other exit code → STOP and report the error
    - **3c. Save it.** From your workspace:
      ```bash
-     node scripts/jobs.mjs add \
+     node /opt/openjob/agent-scripts/jobs.mjs add \
        --company "<company>" \
        --title "<title>" \
        --url "<normalized url>"
@@ -159,7 +159,7 @@ added the notes.
 
 - **One job per run maximum.**
 - No duplicate job URLs.
-- **`scripts/jobs.mjs` is the only writer.** All job state lives in the app —
+- **`/opt/openjob/agent-scripts/jobs.mjs` is the only writer.** All job state lives in the app —
   never in local files — and you never call the API yourself.
 - Status values: `found` (saved, not applied), `applied`, `blocked` (attempted,
   not completed). Finding only ever writes `found`.
@@ -178,6 +178,6 @@ added the notes.
 - Any failure the board's notes mark as fatal, or that clearly means "stop"
   (rate limit, CAPTCHA, verification, API error, unexpected schema) → STOP and
   report. No fallback, no retry loop unless the notes allow one.
-- `scripts/jobs.mjs` exits non-zero with `ERROR: …` → STOP and report that
+- `/opt/openjob/agent-scripts/jobs.mjs` exits non-zero with `ERROR: …` → STOP and report that
   message verbatim.
 - Never swap to a different board mid-run to "still deliver a result".

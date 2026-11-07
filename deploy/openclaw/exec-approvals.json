@@ -5,7 +5,7 @@
       "allowlist": [
         {
           "pattern": "node",
-          "argPattern": "^scripts/(jobs|criteria)\\.mjs( .*)?$"
+          "argPattern": "^/opt/openjob/agent-scripts/(jobs|criteria)\\.mjs( .*)?$"
         }
       ]
     }
