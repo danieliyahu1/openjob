@@ -6,7 +6,8 @@ COPY src src
 RUN mvn -q -B -DskipTests package
 
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -g 10001 -S app && adduser -u 10001 -S -G app app
+RUN addgroup -g 10001 -S app && adduser -u 10001 -S -G app app \
+    && mkdir -p /data && chown 10001:10001 /data
 WORKDIR /app
 COPY --from=build /app/target/openjob-0.0.1-SNAPSHOT.jar app.jar
 USER 10001:10001
