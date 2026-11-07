@@ -1,67 +1,84 @@
 #!/usr/bin/env node
 // Creates a user's OpenClaw agent and workspace on demand. Lives in the
 // OpenClaw pod: it shares the network namespace with the gateway (localhost)
-// and the workspace volume, so it can use the OpenClaw CLI.
-import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+// and the workspace volume.
+//
+// Filesystem work happens here; everything else goes through the gateway's
+// admin HTTP RPC. Deliberately no `openclaw` CLI spawns: each one is a fresh
+// Node process, and several in a row exceed this sidecar's memory limit.
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT || 18790);
 const ROOT = process.env.WORKSPACES_ROOT || "/home/node/.openclaw/workspaces";
 const TEMPLATE = process.env.TEMPLATE_WORKSPACE || "/home/node/.openclaw/workspace";
 const TEMPLATE_AGENT = process.env.TEMPLATE_AGENT || "main";
+const GATEWAY = process.env.OPENCLAW_GATEWAY_URL || "http://127.0.0.1:18789";
+const TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || "";
 const DRY_RUN = process.env.PROVISION_DRY_RUN === "1";
 const SLUG = /^u-[0-9a-f]{12}$/;
 
 const log = (...parts) => console.log(new Date().toISOString(), ...parts);
 
-const run = (args, input) => {
-  if (DRY_RUN) {
-    log("[dry-run] openclaw", args.join(" "));
-    return "";
-  }
-  return execFileSync("openclaw", args, {
-    encoding: "utf8",
-    timeout: 120_000,
-    input,
-    stdio: ["pipe", "pipe", "pipe"],
+async function rpc(method, params = {}) {
+  const response = await fetch(`${GATEWAY}/api/v1/admin/rpc`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${TOKEN}`,
+    },
+    body: JSON.stringify({ method, params }),
+    signal: AbortSignal.timeout(30_000),
   });
-};
-
-const openclaw = (...args) => run(args);
-
-const hasAgent = (slug) => {
-  if (DRY_RUN) return false;
-  try {
-    return JSON.stringify(JSON.parse(openclaw("agents", "list", "--json"))).includes(`"${slug}"`);
-  } catch (error) {
-    log("agents_list_failed", error.message);
-    return false;
+  if (!response.ok) {
+    throw new Error(`${method}: HTTP ${response.status}`);
   }
-};
+  const body = await response.json();
+  if (!body.ok) {
+    throw new Error(`${method}: ${body.error?.message || "failed"}`);
+  }
+  return body.payload;
+}
 
-const ensureApproval = (slug) => {
-  if (DRY_RUN) return;
-  const parsed = JSON.parse(openclaw("approvals", "get", "--gateway", "--json"));
-  const document = parsed.file ?? parsed;
+async function hasAgent(slug) {
+  const { agents = [] } = await rpc("agents.list", {});
+  return agents.some((agent) => agent.id === slug);
+}
+
+/**
+ * Make the entry an exact copy of the template agent, only renamed and
+ * pointed at this workspace. Changing the template updates future agents.
+ */
+async function applyEntry(slug, workspace) {
+  const snapshot = await rpc("config.get", {});
+  const entries = snapshot.config?.agents?.entries ?? {};
+  const template = entries[TEMPLATE_AGENT];
+  if (!template) throw new Error(`template agent "${TEMPLATE_AGENT}" is missing`);
+
+  const entry = { ...template, name: slug, workspace };
+  delete entry.agentDir;
+  await rpc("config.patch", {
+    raw: JSON.stringify({ agents: { entries: { [slug]: entry } } }),
+    baseHash: snapshot.hash,
+  });
+}
+
+async function ensureApproval(slug) {
+  const current = await rpc("exec.approvals.get", {});
+  const document = current?.file ?? current;
   if (!document?.agents) throw new Error("unexpected approvals document");
   if (document.agents[slug]) return;
   const template = document.agents[TEMPLATE_AGENT] || Object.values(document.agents)[0];
   if (!template) throw new Error("no approvals to copy");
   document.agents[slug] = { ...template };
-  const file = `${ROOT}/.approvals-${process.pid}.json`;
-  writeFileSync(file, JSON.stringify(document));
-  try {
-    openclaw("approvals", "set", "--gateway", "--file", file);
-  } finally {
-    rmSync(file, { force: true });
-  }
-};
+  await rpc("exec.approvals.set", { file: document, baseHash: current.hash });
+}
 
-const provision = (slug) => {
+async function provision(slug) {
   const workspace = `${ROOT}/${slug}`;
+  const existing = await hasAgent(slug);
   // Fast path: already registered and its workspace is in place.
-  if (hasAgent(slug) && existsSync(`${workspace}/.openjob-id`)) return;
+  if (existing && existsSync(`${workspace}/.openjob-id`)) return;
 
   mkdirSync(ROOT, { recursive: true });
   if (!existsSync(workspace)) {
@@ -69,27 +86,20 @@ const provision = (slug) => {
   }
   writeFileSync(`${workspace}/.openjob-id`, `${slug}\n`);
 
-  if (!hasAgent(slug)) {
-    openclaw("agents", "add", slug, "--workspace", workspace, "--non-interactive");
+  if (DRY_RUN) {
+    log("[dry-run] provision", slug, workspace);
+    return;
   }
 
-  // Make the entry an exact copy of the template agent, only renamed and
-  // pointed at this workspace. Changing the template updates future agents.
-  if (!DRY_RUN) {
-    const template = JSON.parse(
-      openclaw("config", "get", `agents.entries.${TEMPLATE_AGENT}`, "--json"));
-    const entry = { ...template, name: slug, workspace };
-    delete entry.agentDir;
-    run(["config", "patch", "--stdin", "--replace-path", `agents.entries.${slug}`],
-        JSON.stringify({ agents: { entries: { [slug]: entry } } }));
-    if (!hasAgent(slug)) throw new Error("the gateway did not register the agent");
+  if (!existing) {
+    await rpc("agents.create", { name: slug, workspace });
   }
-
-  ensureApproval(slug);
+  await applyEntry(slug, workspace);
+  await ensureApproval(slug);
   log("provisioned", slug);
-};
+}
 
-// One provisioning at a time: the CLI owns shared state.
+// One provisioning at a time: the gateway owns shared config state.
 let queue = Promise.resolve();
 const serialized = (work) => {
   const next = queue.then(work, work);
@@ -134,7 +144,7 @@ createServer(async (request, response) => {
     await serialized(() => provision(slug));
     respond(response, 204);
   } catch (error) {
-    log("provision_failed", slug, String(error.stderr || error.message).trim());
+    log("provision_failed", slug, String(error.message || error).trim());
     respond(response, 500, { error: "could not provision the agent" });
   }
 }).listen(PORT, "0.0.0.0", () => log(`provisioner listening on ${PORT}`));
