@@ -55,10 +55,14 @@ node scripts/criteria.mjs
 Never invent criteria and never edit them without the user asking. If the user
 dictates their criteria, save them with `--set` and confirm what was saved.
 
-## Known adapters (optional)
+## Known adapters
 
-Any job board is fair game. These are just written-up notes for boards we
-already solved:
+The notes in `platforms/` are **for your help, not your orders**. They are what
+earlier runs learned about boards we already solved: read them when they apply,
+ignore them when the board has changed or they don't fit this user, and never
+treat the table as the list of boards you are allowed to use. Any job board is
+fair game, whether or not it has notes here — the user's criteria decide, not
+this table.
 
 | Platform | Adapter | Access |
 | --- | --- | --- |
@@ -66,14 +70,16 @@ already solved:
 | Himalayas (`himalayas.app`) | `platforms/himalayas.md` | public JSON API, no login |
 | LinkedIn (`linkedin.com`) | `platforms/linkedin.md` | browser session, needs login |
 
-- Use the board the user names. If they name none, prefer HireMe (cheapest: API
-  only, no login) — but any board that fits the criteria is fine.
+- Use the board the user names. If they name none, any board that fits the criteria is fine.
 - If the board has an adapter, **read it before discovery**
   (`platforms/<platform>.md`) — supporting files are not loaded automatically,
   only this `SKILL.md` is.
 - No adapter for that board? Search it anyway: work out the points below
-  yourself, then leave notes behind — see *"Write down a board you had to figure
+  yourself, then leave notes behind — see *"Record a board you had to figure
   out"*.
+- **Board that works but is not in the table? Add it.** Write
+  `platforms/<board>.md` and add its row here in the same run. A board you had to
+  figure out is a board the next run should not have to figure out again.
 
 ## What an adapter must define
 
@@ -92,13 +98,14 @@ are not.
 You must be able to derive a **normalized URL** for dedupe — if a board gives you
 no usable posting URL, skip it rather than saving cards you cannot dedupe.
 
-### Write down a board you had to figure out
+### Record a board you had to figure out
 
-If you searched a board that has no notes, leave notes behind so the next run
-doesn't re-derive them:
+Every board you use that has no notes in `platforms/` gets notes before the run
+ends — that is part of the job, not an optional extra. The next run should never
+re-derive what you just worked out.
 
-1. Write `platforms/<board>.md` using the same five sections as the existing
-   files — Access, Discovery, Identity, Field mapping, Failure modes.
+1. Write `platforms/<board>.md` using the same sections as the existing files —
+   Access, Discovery, Identity, Field mapping, Failure modes.
 2. Record only what you actually verified this run (endpoints, URL shape, labels,
    the stop that really happened). Mark anything you did not confirm as
    *unverified* instead of guessing.
@@ -173,6 +180,8 @@ added the notes.
 - Never print credentials in chat.
 - One board per run: pick it up front and don't switch boards mid-run when one
   fails or comes up empty.
+- **Leave notes behind.** Any board you used that had no notes in `platforms/`
+  gets a file and a row in the known-adapters table before the run ends.
 
 ## Error handling
 
