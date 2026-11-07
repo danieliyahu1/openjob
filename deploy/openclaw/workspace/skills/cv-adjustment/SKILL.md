@@ -46,35 +46,30 @@ or activities that are not in the CV.
 
 ## Where things live (defaults — confirm if not found)
 
-- Master CV: the newest English `Daniel Eliyahu resume.docx` under the project CV
-  folder `/home/node/.openclaw/workspace-openjob/cv/original cv`
-  (currently `/home/node/.openclaw/workspace-openjob/cv/original cv/java israel/`).
-  Confirm it is the newest / intended master. A non-English master (e.g. the
-  Hebrew CV under `original cv/עברית/`) is used **only** when the user asks for that language.
-- Output: a per-application subfolder under the dedicated output folder
-  `/home/node/.openclaw/workspace-openjob/cv/cv-adjustment/<job-slug>/`, where
-  `<job-slug>` is the adjustment name (e.g.
-  `twine-software-engineer-customer-solutions`). The generated file keeps the
-  **same name as the original/master file** — never rename it per company or
-  role. Produce exactly one output file. All newly generated CVs go here, not
-  into `cv/`.
+- Master CV: the newest English `Daniel Eliyahu resume.docx` under `cv/original
+  cv` in your workspace (currently `cv/original cv/java israel/`). Every path
+  here is relative to the workspace. Confirm it is the newest / intended master.
+  A non-English master (e.g. the Hebrew CV under `cv/original cv/עברית/`) is
+  used **only** when the user asks for that language.
+- Output: `cv/cv-adjustment/<job-slug>/` in your workspace, where `<job-slug>`
+  is the adjustment name (e.g. `twine-software-engineer-customer-solutions`). The
+  generated file keeps the **same name as the original/master file** — never
+  rename it per company or role. Produce exactly one output file.
 - Tooling: the CV scripts ship with this skill in
-  `skills/cv-adjustment/scripts/` (`read_docx.py`, `tailor_docx.py`,
-  `docx_to_pdf.ps1`). Run every command below from the **project root**, and always
-  call them by that full path — a bare `scripts/...` is the project's other folder.
-  **This host has no Python** (the WindowsApps `python.exe` alias is dead and no
-  interpreter is installed). Use the drop-in Node port instead, same arguments:
-  `node skills/cv-adjustment/scripts/tailor_docx.cjs --src … --out … --spec …`
-  (reads the same spec JSON, keeps the master's styles/formatting). Verify the
-  result with `node skills/cv-adjustment/scripts/dump_docx.cjs "<output file>"`. PDF rendering needs Word automation, which this automation
-  context cannot approve — skip step 7's visual check and rely on the text dump.
+  `skills/cv-adjustment/scripts/` and run on Node — this host has no Python and
+  no Word:
+  - `node skills/cv-adjustment/scripts/tailor_docx.cjs --src … --out … --spec …`
+    rewrites the copy while keeping the master's styles and formatting.
+  - `node skills/cv-adjustment/scripts/dump_docx.cjs "<file>"` prints paragraphs,
+    run flags and `LINK:` targets, and is how you verify the result.
+  Run every command from the workspace root.
 - GitHub: the profile linked in the CV contact line (`LINK: https://github.com/...`),
   falling back to `danieliyahu1`.
 
 ## Workflow
 
 1. **Read the master CV.**
-   `python skills/cv-adjustment/scripts/read_docx.py "<master.docx>"`
+   `node skills/cv-adjustment/scripts/dump_docx.cjs "<master.docx>"`
    Note paragraph indices, styles, runs (bold/italic), and external `LINK:` targets.
 2. **Get the job description.** Try `web_fetch` first (it returns readable
    markdown). If the page is JS-rendered (you see template placeholders like
@@ -92,17 +87,15 @@ or activities that are not in the CV.
    posting is outside the CV's primary discipline.
 5. **Write a spec JSON** describing the rewrite into the per-application folder
    (schema in the header of
-   `skills/cv-adjustment/scripts/tailor_docx.py`).
+   `skills/cv-adjustment/scripts/tailor_docx.cjs`).
    Each content segment is `[text, bold, italic]`, where `null` means "inherit
    from the template paragraph".
 6. **Build the tailored copy.**
-   `python skills/cv-adjustment/scripts/tailor_docx.py --src "<master file>" --out "cv-adjustment/<job-slug>/<same name as master>" --spec spec.json`
-7. **Verify.** Convert and review:
-   `powershell -File skills/cv-adjustment/scripts/docx_to_pdf.ps1 -In "<output file>" -Out "$env:TEMP\<master base name>.pdf"`
-   To view it visually, serve the folder over localhost and screenshot it with
-   the browser (`file://` is blocked, so use `python -m http.server`): open
-   `http://localhost:<port>/<file>.pdf` with `browser` `{action:"open", url:…}`,
-   then `{action:"screenshot", fullPage:true}`.
+   `node skills/cv-adjustment/scripts/tailor_docx.cjs --src "<master file>" --out "cv/cv-adjustment/<job-slug>/<same name as master>" --spec spec.json`
+7. **Verify.**
+   `node skills/cv-adjustment/scripts/dump_docx.cjs "<output file>"`
+   Confirm the text matches the plan, the styles and `LINK:` targets survived, and
+   exactly one output file exists.
 8. **Report** a change map — every change and the CV line it came from — plus the
    honest gaps, and deliver the requested output (a single format unless the user
    asked for more).

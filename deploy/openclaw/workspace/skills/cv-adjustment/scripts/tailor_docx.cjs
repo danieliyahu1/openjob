@@ -1,4 +1,4 @@
-// Node port of skills/cv-adjustment/scripts/tailor_docx.py (python unavailable on this host)
+// Node port of the original Python tailor_docx: this image has no Python.
 const fs = require('fs');
 const zlib = require('zlib');
 const path = require('path');
