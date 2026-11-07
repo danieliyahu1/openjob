@@ -34,7 +34,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: openclaw
-          image: ghcr.io/danieliyahu1/openjob-agent:3a9853451ff1b3049a8fb3125f2fe190fff61388
+          image: ghcr.io/danieliyahu1/openjob-agent:97aaa79c82bb7731a7f033089dd812454cffc470
           imagePullPolicy: IfNotPresent
           ports:
             - name: gateway
@@ -143,7 +143,7 @@ spec:
             - name: workspaces
               mountPath: /home/node/.openclaw/workspaces
         - name: provisioner
-          image: ghcr.io/danieliyahu1/openjob-agent:3a9853451ff1b3049a8fb3125f2fe190fff61388
+          image: ghcr.io/danieliyahu1/openjob-agent:97aaa79c82bb7731a7f033089dd812454cffc470
           imagePullPolicy: IfNotPresent
           command: ["node", "/opt/openjob/provisioner.mjs"]
           ports:
