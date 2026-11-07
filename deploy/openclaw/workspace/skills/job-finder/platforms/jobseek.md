@@ -9,8 +9,7 @@ from the criteria (`node scripts/criteria.mjs`).
 ## 1. Access
 
 None needed. `https://jseek.co/api/v1` is public, cross-origin, unauthenticated.
-OpenAPI 1.4.0 at `https://jseek.co/openapi.json`. A hosted MCP endpoint also
-exists at `https://jseek.co/mcp` (Streamable HTTP, no auth).
+OpenAPI 1.4.0 at `https://jseek.co/openapi.json`.
 
 Self-hosting is **not** a one-command deployment — it needs two Postgres
 databases, Redis, Typesense and S3-compatible storage. Use the hosted API.
