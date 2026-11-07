@@ -69,6 +69,7 @@ this table.
 | HireMe (`hiremetech.com`) | `platforms/hiremetech.md` | public JSON API, no login |
 | Himalayas (`himalayas.app`) | `platforms/himalayas.md` | public JSON API, no login |
 | freehire (`freehire.me`) | `platforms/freehire.md` | public JSON API, no login |
+| jobseek (`jseek.co`) | `platforms/jobseek.md` | public JSON API, no login |
 | LinkedIn (`linkedin.com`) | `platforms/linkedin.md` | browser session, needs login |
 
 - Use the board the user names. If they name none, any board that fits the criteria is fine.
