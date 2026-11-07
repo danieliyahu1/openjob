@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "agents": {
+    "openjob": {
+      "allowlist": [
+        {
+          "pattern": "node",
+          "argPattern": "^scripts/(jobs|criteria)\\.mjs( .*)?$"
+        }
+      ]
+    }
+  }
+}

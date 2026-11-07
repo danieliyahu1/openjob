@@ -7,13 +7,40 @@
     "http": { "endpoints": { "chatCompletions": { "enabled": true } } }
   },
   "agents": {
-    "defaults": { "model": { "primary": "opencode-go/deepseek-v4.1-flash" } },
+    "ownership": "explicit",
+    "defaults": {
+      "model": { "primary": "opencode-go/deepseek-v4.1-flash" }
+    },
     "entries": {
       "openjob": {
-        "name": "openjob",
-        "workspace": "/home/node/.openclaw/workspace-openjob"
+        "name": "job-searcher",
+        "workspace": "/home/node/.openclaw/workspace-openjob",
+        "identity": { "name": "job-searcher" },
+        "model": "opencode-go/deepseek-v4.1-flash",
+        "tools": {
+          "fs": { "workspaceOnly": true },
+          "allow": [
+            "group:fs",
+            "group:runtime",
+            "group:memory",
+            "group:messaging",
+            "group:web",
+            "ls",
+            "skills_read",
+            "skills_search",
+            "ask_user",
+            "automations",
+            "browser"
+          ],
+          "exec": { "mode": "allowlist" }
+        }
       }
     }
+  },
+  "tools": {
+    "profile": "full",
+    "sessions": { "visibility": "agent" },
+    "agentToAgent": { "enabled": false }
   },
   "browser": {
     "noSandbox": true
