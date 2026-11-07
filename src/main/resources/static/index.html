@@ -131,7 +131,9 @@
           location.replace('/login.html');
           return;
         }
-        pending.textContent = response.ok ? await response.text() : 'error ' + response.status;
+        const body = await response.text();
+        const readable = (response.headers.get('content-type') || '').startsWith('text/plain');
+        pending.textContent = response.ok || readable ? body : 'error ' + response.status;
       } catch (err) {
         pending.textContent = 'error: ' + err.message;
       }

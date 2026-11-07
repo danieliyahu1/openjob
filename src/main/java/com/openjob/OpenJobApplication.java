@@ -6,6 +6,7 @@ import java.util.Set;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -45,22 +46,44 @@ public class OpenJobApplication {
             this.metrics = metrics;
         }
 
+        /**
+         * Forwards one turn to the signed-in account's agent. Each failure says
+         * what actually happened: a timeout is not a failure, and an unreachable
+         * gateway means the turn never started.
+         */
         @PostMapping("/message")
-        String message(@RequestParam String message, HttpSession session) {
+        ResponseEntity<String> message(@RequestParam String message, HttpSession session) {
             String user = requireUser(session);
             String agent = userAgents.ensure(user);
             try {
                 provisioning.ensure(agent);
             } catch (AgentProvisioning.AgentUnavailable notReady) {
-                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                        "the agent is not ready, try again");
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body("Your agent is not ready yet, so this message was not sent. "
+                                + "Please try again in a moment.");
             }
+
             long started = System.nanoTime();
             metrics.agentStarted();
             try {
                 String reply = openClaw.reply("openclaw/" + agent, message, user);
                 metrics.agentFinished("success", System.nanoTime() - started);
-                return reply;
+                return ResponseEntity.ok(reply);
+            } catch (OpenClawClient.Timeout noAnswer) {
+                metrics.agentFinished("timeout", System.nanoTime() - started);
+                return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT)
+                        .body("The agent did not answer in time. It may still be working, "
+                                + "so check the board before sending the message again.");
+            } catch (OpenClawClient.Unreachable neverStarted) {
+                metrics.agentFinished("failure", System.nanoTime() - started);
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                        .body("The agent could not be reached, so this message was not sent. "
+                                + "Please try again in a moment.");
+            } catch (OpenClawClient.Rejected refused) {
+                metrics.agentFinished("failure", System.nanoTime() - started);
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                        .body("The agent refused the request (HTTP " + refused.status()
+                                + ").");
             } catch (RuntimeException | Error failure) {
                 metrics.agentFinished("failure", System.nanoTime() - started);
                 throw failure;
