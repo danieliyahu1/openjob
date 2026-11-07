@@ -36,7 +36,7 @@ spec:
         # Seeds the persisted config and rebuilds every agent from the image's
         # template agent before the gateway reads it.
         - name: prepare-data
-          image: ghcr.io/danieliyahu1/openjob-agent:09c0f614b2599f53fdcd24b2cba14883c93d05af
+          image: ghcr.io/danieliyahu1/openjob-agent:3f90fcf71cb028672c3079066d3de8df3bad2824
           imagePullPolicy: IfNotPresent
           command: ["node", "/opt/openjob/merge-config.mjs"]
           env:
@@ -58,7 +58,7 @@ spec:
         # Copies the provided skills and AGENTS.md into every existing
         # workspace so a skill fix reaches users who already have one.
         - name: sync-workspaces
-          image: ghcr.io/danieliyahu1/openjob-agent:09c0f614b2599f53fdcd24b2cba14883c93d05af
+          image: ghcr.io/danieliyahu1/openjob-agent:3f90fcf71cb028672c3079066d3de8df3bad2824
           imagePullPolicy: IfNotPresent
           command: ["node", "/opt/openjob/sync-workspace.mjs"]
           env:
@@ -75,7 +75,7 @@ spec:
               mountPath: /data
       containers:
         - name: openclaw
-          image: ghcr.io/danieliyahu1/openjob-agent:09c0f614b2599f53fdcd24b2cba14883c93d05af
+          image: ghcr.io/danieliyahu1/openjob-agent:3f90fcf71cb028672c3079066d3de8df3bad2824
           imagePullPolicy: IfNotPresent
           ports:
             - name: gateway
@@ -196,7 +196,7 @@ spec:
               mountPath: /home/node/.openclaw/agents
               subPath: agents
         - name: provisioner
-          image: ghcr.io/danieliyahu1/openjob-agent:09c0f614b2599f53fdcd24b2cba14883c93d05af
+          image: ghcr.io/danieliyahu1/openjob-agent:3f90fcf71cb028672c3079066d3de8df3bad2824
           imagePullPolicy: IfNotPresent
           command: ["node", "/opt/openjob/provisioner.mjs"]
           ports:
