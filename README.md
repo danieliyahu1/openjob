@@ -51,17 +51,21 @@ Deliberately left behind: `AGENTS.md`/`SOUL.md` boilerplate, `memory/`,
 ## Status
 
 Walking skeleton: a Spring Boot 3.5 / Java 21 app with a chat page and one
-endpoint. `POST /message` forwards the text to the local OpenClaw Gateway
-(`POST /v1/chat/completions`, agent `openclaw/main`) and returns the agent's
-reply. The conversation id is the signed-in email, so each account keeps one
-thread with the agent, and the job board and criteria the agent writes are
-scoped to that email.
+endpoint. `POST /message` forwards the text to the OpenClaw Gateway
+(`POST /v1/chat/completions`) and returns the agent's reply. Each signed-in
+account gets its own agent and workspace, created on demand: the app stores
+`email -> agent slug` in `user_agents`, routes to `openclaw/<slug>`, and a
+provisioner sidecar in the agent pod creates the agent and workspace when they
+are missing. Workspaces live on an emptyDir, so they are recreated after any
+agent pod restart. The conversation id is still the email.
 
 Applications are stored in SQLite (`openjob.db`, table `applications`) and managed
 through `GET/POST /api/applications` and `PATCH /api/applications/{id}`, guarded by
-the `X-OpenJob-Token` header; rows are scoped by the `user` parameter. Statuses are
+the `X-OpenJob-Token` and `X-OpenJob-Agent` headers; rows are scoped to the
+account the agent slug belongs to. Statuses are
 `found`, `applied`, `blocked`. Per-user match criteria live in the `criteria` table
-(`GET/POST /api/criteria`).
+(`GET/POST /api/criteria`). The agent's scripts read their slug from
+`.openjob-id` in their workspace.
 
 Signing in is required for the page and `POST /message`. The first visit goes to
 `login.html`; email and password create an account (open signup) or sign in.
@@ -73,15 +77,18 @@ anonymous feedback endpoint stay outside the sign-in.
 Run with `mvn spring-boot:run`, then open http://localhost:8080. Copy
 `.env.example` to `.env` and set `OPENCLAW_TOKEN` to the gateway token from
 `~/.openclaw/openclaw.json`; the Gateway also needs
-`gateway.http.endpoints.chatCompletions.enabled = true`.
+`gateway.http.endpoints.chatCompletions.enabled = true`. Chat also needs the
+provisioner on `PROVISIONER_URL` (default `http://127.0.0.1:18790`); without it
+`POST /message` answers 503.
 
 ## Docker
 
-`compose.yaml` runs both pieces: OpenClaw `2026.10.10` (one `openjob` agent,
-config baked in from `deploy/openclaw/openclaw.json`) and this app talking to it
-at `http://openclaw:18789`. The agent workspace ships in the repo too:
-`deploy/openclaw/workspace/{skills,scripts}` is copied into the image, and
-`PLANE_API_KEY` is passed through for `scripts/plane-jobs.mjs`. Put
+`compose.yaml` runs OpenClaw `2026.10.10` (config baked in from
+`deploy/openclaw/openclaw.json`), the provisioner sidecar that creates per-user
+agents, and this app talking to them at `http://openclaw:18789`. The workspace
+template ships in the repo: `deploy/openclaw/workspace/{skills,scripts}` is
+copied into each user's workspace, and `PLANE_API_KEY` is passed through for
+`scripts/plane-jobs.mjs`. Put
 `OPENCODE_API_KEY` and `OPENCLAW_GATEWAY_TOKEN` in `.env`, then
 `docker compose up --build`. Only port 8080 is published.
 

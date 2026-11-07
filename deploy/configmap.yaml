@@ -9,7 +9,7 @@ data:
   # The agent runs beside the app in this namespace; both names resolve inside
   # the cluster only.
   OPENCLAW_URL: http://openclaw.openjob.svc.cluster.local:18789
-  OPENCLAW_AGENT: openclaw/openjob
+  PROVISIONER_URL: http://openclaw.openjob.svc.cluster.local:18790
   # SQLite lives on a persistent volume so the board survives restarts.
   OPENJOB_DB_PATH: /data/openjob.db
   MANAGEMENT_PORT: "9090"

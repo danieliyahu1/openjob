@@ -6,3 +6,4 @@ COPY openclaw.json /home/node/.openclaw/openclaw.json
 # ephemeral filesystem.
 COPY --chown=node:node exec-approvals.json /home/node/.openclaw/exec-approvals.json
 COPY --chown=node:node workspace /home/node/.openclaw/workspace-openjob
+COPY --chown=node:node provisioner.mjs /opt/openjob/provisioner.mjs

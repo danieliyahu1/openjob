@@ -14,14 +14,15 @@ truth**, attach that tailored copy, review, and submit.
 Job and application state live in the OpenJob app. Only `scripts/jobs.mjs` talks
 to it; never call the API yourself and never write job data to local files.
 
-Every user message starts with `[[session:<id>]]`. That id is the owner; pass it
-as `--user`. If the marker is missing, STOP and report it.
+Every user message belongs to the account that owns this workspace. The scripts
+read the owner from `.openjob-id` themselves; never pass a user or agent id. If
+`.openjob-id` is missing, STOP and report it.
 
 ```bash
-node scripts/jobs.mjs check --user "<session>" --url "<posting url>"
-node scripts/jobs.mjs add   --user "<session>" --company "<c>" --title "<t>" --url "<url>"
-node scripts/jobs.mjs mark  --user "<session>" --id <id> --status applied
-node scripts/jobs.mjs list  --user "<session>" [--status found]
+node scripts/jobs.mjs check --url "<posting url>"
+node scripts/jobs.mjs add   --company "<c>" --title "<t>" --url "<url>"
+node scripts/jobs.mjs mark  --id <id> --status applied
+node scripts/jobs.mjs list  [--status found]
 ```
 
 Statuses are exactly `found`, `applied`, `blocked`.
@@ -104,9 +105,9 @@ Searching and applying have different rules, and they happen in different places
 ## Workflow
 
 1. **Get the posting URL(s).** If several, do them one at a time.
-2. **Check you haven't already applied.** From the project root:
+2. **Check you haven't already applied.** From your workspace:
    ```bash
-   node scripts/jobs.mjs check --user "<session>" --url "<posting url>"
+   node scripts/jobs.mjs check --url "<posting url>"
    ```
    - exit 0 (`UNIQUE`) → proceed (record it in step 12).
    - exit 2 (`DUPLICATE id=<id> status=<status>`):
@@ -156,12 +157,12 @@ Searching and applying have different rules, and they happen in different places
     message on the page.
 12. **Record the outcome.** Keep state in the app only, never in local files:
     - Submitted successfully:
-      `node scripts/jobs.mjs mark --user "<session>" --id <id> --status applied`
+      `node scripts/jobs.mjs mark --id <id> --status applied`
     - Attempted but not completed (login wall, closed posting, broken ATS):
-      `node scripts/jobs.mjs mark --user "<session>" --id <id> --status blocked`
+      `node scripts/jobs.mjs mark --id <id> --status blocked`
     - Posting not on the board yet:
       ```bash
-      node scripts/jobs.mjs add --user "<session>" \
+      node scripts/jobs.mjs add \
         --company "<company>" \
         --title "<title>" \
         --url "<posting url>" \

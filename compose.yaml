@@ -7,13 +7,29 @@ services:
       PLANE_API_KEY: ${PLANE_API_KEY:-}
       OPENJOB_API_URL: http://openjob:8080
       OPENJOB_API_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
+    volumes:
+      - workspaces:/home/node/.openclaw/workspaces
+
+  provisioner:
+    build: ./deploy/openclaw
+    command: ["node", "/opt/openjob/provisioner.mjs"]
+    environment:
+      OPENCLAW_GATEWAY_URL: ws://openclaw:18789
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
+      WORKSPACES_ROOT: /home/node/.openclaw/workspaces
+      TEMPLATE_WORKSPACE: /home/node/.openclaw/workspace-openjob
+    volumes:
+      - workspaces:/home/node/.openclaw/workspaces
 
   openjob:
     build: .
     environment:
       OPENCLAW_URL: http://openclaw:18789
       OPENCLAW_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
-      OPENCLAW_AGENT: openclaw/openjob
+      PROVISIONER_URL: http://provisioner:18790
       OPENJOB_API_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
     ports:
       - "8080:8080"
+
+volumes:
+  workspaces:

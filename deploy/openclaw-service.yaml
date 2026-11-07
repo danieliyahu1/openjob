@@ -16,3 +16,6 @@ spec:
     - name: gateway
       port: 18789
       targetPort: gateway
+    - name: provisioner
+      port: 18790
+      targetPort: provisioner

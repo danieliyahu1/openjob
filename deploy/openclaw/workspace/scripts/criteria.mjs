@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Reads or writes the job match criteria for one user. Replaces plane-criteria.mjs.
+import { readFileSync } from "node:fs";
 import process from "node:process";
 
 const BASE = (process.env.OPENJOB_API_URL || "http://openjob:8080").replace(/\/+$/, "");
@@ -22,19 +23,28 @@ for (let i = 0; i < argv.length; i += 1) {
   i += 1;
 }
 
-const userId = args.user || fail("--user is required (the signed-in email)");
+// The workspace this script runs in is the user's. Its id authorizes the call.
+const readWorkspaceId = () => {
+  try {
+    return readFileSync(".openjob-id", "utf8").trim();
+  } catch {
+    return fail("no agent id: run this from your workspace (.openjob-id is missing)");
+  }
+};
+
+const AGENT = args.agent || readWorkspaceId();
 if (!TOKEN) fail("OPENJOB_API_TOKEN is not set");
 
-const headers = { "X-OpenJob-Token": TOKEN };
+const headers = { "X-OpenJob-Token": TOKEN, "X-OpenJob-Agent": AGENT };
 
 if (args.set !== undefined) {
   if (!args.set.trim()) fail("--set needs the criteria text");
-  const body = new URLSearchParams({ user: userId, text: args.set });
+  const body = new URLSearchParams({ text: args.set });
   const response = await fetch(`${BASE}/api/criteria`, { method: "POST", headers, body });
   if (!response.ok) fail(`HTTP ${response.status}: ${(await response.text()).trim()}`);
   console.log("SAVED");
 } else {
-  const response = await fetch(`${BASE}/api/criteria?user=${encodeURIComponent(userId)}`, { headers });
+  const response = await fetch(`${BASE}/api/criteria`, { headers });
   if (response.status === 404) {
     fail("no criteria saved for this user; ask the user, then save with --set", 2);
   }

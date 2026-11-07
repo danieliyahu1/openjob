@@ -3,6 +3,8 @@ package com.openjob;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,16 +18,24 @@ class AuthController {
 
     static final String USER = "openjob.user";
 
-    private final AuthService auth;
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
-    AuthController(AuthService auth) {
+    private final AuthService auth;
+    private final UserAgentStore agents;
+    private final ProvisionerClient provisioner;
+
+    AuthController(AuthService auth, UserAgentStore agents, ProvisionerClient provisioner) {
         this.auth = auth;
+        this.agents = agents;
+        this.provisioner = provisioner;
     }
 
     @PostMapping("/api/auth/signup")
     ResponseEntity<Void> signup(@RequestParam String email, @RequestParam String password,
                                 HttpServletRequest request) {
-        signIn(request, auth.signup(email, password, client(request)));
+        String user = auth.signup(email, password, client(request));
+        signIn(request, user);
+        prepare(user);
         return ResponseEntity.noContent().build();
     }
 
@@ -66,6 +76,16 @@ class AuthController {
             request.changeSessionId();
         }
         request.getSession(true).setAttribute(USER, user);
+    }
+
+    /** Best effort: /message provisions again, so a failure here only costs time. */
+    private void prepare(String user) {
+        try {
+            provisioner.ensure(agents.ensure(user));
+        } catch (RuntimeException problem) {
+            log.warn("agent_provisioning_failed slug={} error={}",
+                    agents.slugFor(user), problem.getClass().getSimpleName());
+        }
     }
 
     /** Cloudflare puts the visitor address first in X-Forwarded-For. */

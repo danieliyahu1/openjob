@@ -16,23 +16,24 @@ talks to the app's API using `OPENJOB_API_URL` and `OPENJOB_API_TOKEN`, which ar
 already in the environment. Never call the API yourself and never write job data
 to local files.
 
-Every user message starts with `[[session:<id>]]`. That id is the owner; pass it
-as `--user`. If the marker is missing, STOP and report it — never invent one.
+Every user message belongs to the account that owns this workspace. The scripts
+read the owner from `.openjob-id` themselves; never pass a user or agent id. If
+`.openjob-id` is missing, STOP and report it — never invent one.
 
 ## Criteria
 
-The match criteria are the user's own input, stored per browser session — never
-in the repo and never in local files. Read them fresh at the start of every run:
+The match criteria are the user's own input, stored per account — never in the
+repo and never in local files. Read them fresh at the start of every run:
 
 ```bash
-node scripts/criteria.mjs --user "<session>"
+node scripts/criteria.mjs
 ```
 
 - exit 0 → use the printed markdown as the criteria for this run
 - exit 2 → nothing saved yet: ask the user for their criteria (roles, seniority,
   location, must-haves, dealbreakers), then save the answer and continue:
   ```bash
-  node scripts/criteria.mjs --user "<session>" --set "<their answer>"
+  node scripts/criteria.mjs --set "<their answer>"
   ```
 - any other exit code → STOP and report the error
 
@@ -96,7 +97,7 @@ added the notes.
 
 1. **Read the criteria** for this user:
    ```bash
-   node scripts/criteria.mjs --user "<session>"
+   node scripts/criteria.mjs
    ```
    Skip this step when the user is only asking to save a specific posting they
    already picked — criteria are for searching.
@@ -107,16 +108,16 @@ added the notes.
      name; fetch the posting detail when the list data is not enough.
      - criteria not met → skip to the next attempt
      - criteria met → continue to 3b
-   - **3b. Verify it is unique.** From the project root:
+   - **3b. Verify it is unique.** From your workspace:
      ```bash
-     node scripts/jobs.mjs check --user "<session>" --url "<normalized url>"
+     node scripts/jobs.mjs check --url "<normalized url>"
      ```
      - exit 0 (`UNIQUE`) → continue to 3c
      - exit 2 (`DUPLICATE id=… status=…`) → skip to the next attempt
      - any other exit code → STOP and report the error
-   - **3c. Save it.** From the project root:
+   - **3c. Save it.** From your workspace:
      ```bash
-     node scripts/jobs.mjs add --user "<session>" \
+     node scripts/jobs.mjs add \
        --company "<company>" \
        --title "<title>" \
        --url "<normalized url>"

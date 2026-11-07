@@ -29,6 +29,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -138,8 +139,52 @@ spec:
             # Chromium needs shared memory larger than the 64Mi default.
             - name: shm
               mountPath: /dev/shm
+            # Per-user workspaces, written by the provisioner sidecar.
+            - name: workspaces
+              mountPath: /home/node/.openclaw/workspaces
+        - name: provisioner
+          image: ghcr.io/danieliyahu1/openjob-agent:df7d94a27dfd603ceda9ec7ac149dcf0159ef0c2
+          imagePullPolicy: IfNotPresent
+          command: ["node", "/opt/openjob/provisioner.mjs"]
+          ports:
+            - name: provisioner
+              containerPort: 18790
+          env:
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openjob-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+                  optional: true
+            - name: WORKSPACES_ROOT
+              value: /home/node/.openclaw/workspaces
+            - name: TEMPLATE_WORKSPACE
+              value: /home/node/.openclaw/workspace-openjob
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: provisioner
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: workspaces
+              mountPath: /home/node/.openclaw/workspaces
       volumes:
         - name: shm
           emptyDir:
             medium: Memory
             sizeLimit: 512Mi
+        - name: workspaces
+          emptyDir: {}

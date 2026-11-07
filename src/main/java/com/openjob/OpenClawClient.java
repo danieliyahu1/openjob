@@ -12,11 +12,9 @@ import org.springframework.web.client.RestClient;
 class OpenClawClient {
 
     private final RestClient http;
-    private final String agent;
 
     OpenClawClient(@Value("${OPENCLAW_URL:http://127.0.0.1:18789}") String url,
-                   @Value("${OPENCLAW_TOKEN:}") String token,
-                   @Value("${OPENCLAW_AGENT:openclaw/main}") String agent) {
+                   @Value("${OPENCLAW_TOKEN:}") String token) {
         this.http = RestClient.builder()
                 // The gateway's HTTP/WS multiplexer rejects HTTP/2 upgrade attempts.
                 .requestFactory(new JdkClientHttpRequestFactory(
@@ -24,10 +22,9 @@ class OpenClawClient {
                 .baseUrl(url)
                 .defaultHeader("Authorization", "Bearer " + token)
                 .build();
-        this.agent = agent;
     }
 
-    String reply(String message, String conversation) {
+    String reply(String agent, String message, String conversation) {
         ChatRequest request = new ChatRequest(agent, List.of(new ChatMessage("user", message)), conversation);
         ChatResponse response = http.post()
                 .uri("/v1/chat/completions")

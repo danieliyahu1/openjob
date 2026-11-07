@@ -32,14 +32,19 @@ public class OpenJobApplication {
 
         private final OpenClawClient openClaw;
         private final ApplicationStore store;
+        private final UserAgentStore userAgents;
+        private final ProvisionerClient provisioner;
         private final OperationalMetrics metrics;
         private final String apiToken;
 
         MessageController(OpenClawClient openClaw, ApplicationStore store,
+                          UserAgentStore userAgents, ProvisionerClient provisioner,
                           OperationalMetrics metrics,
                           @Value("${OPENJOB_API_TOKEN:${OPENCLAW_TOKEN:}}") String apiToken) {
             this.openClaw = openClaw;
             this.store = store;
+            this.userAgents = userAgents;
+            this.provisioner = provisioner;
             this.metrics = metrics;
             this.apiToken = apiToken;
         }
@@ -47,11 +52,17 @@ public class OpenJobApplication {
         @PostMapping("/message")
         String message(@RequestParam String message, HttpSession session) {
             String user = (String) session.getAttribute(AuthController.USER);
-            String context = "[[session:" + user + "]] ";
+            String agent = userAgents.ensure(user);
+            try {
+                provisioner.ensure(agent);
+            } catch (RuntimeException notReady) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "the agent is not ready, try again");
+            }
             long started = System.nanoTime();
             metrics.agentStarted();
             try {
-                String reply = openClaw.reply(context + message, user);
+                String reply = openClaw.reply("openclaw/" + agent, message, user);
                 metrics.agentFinished("success", System.nanoTime() - started);
                 return reply;
             } catch (RuntimeException | Error failure) {
@@ -62,41 +73,41 @@ public class OpenJobApplication {
 
         @GetMapping("/api/applications")
         List<ApplicationStore.Job> list(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                                        @RequestParam String user,
+                                        @RequestHeader("X-OpenJob-Agent") String agent,
                                         @RequestParam(required = false) String status) {
             requireToken(token);
-            return store.list(user, status);
+            return store.list(owner(agent), status);
         }
 
         @PostMapping("/api/applications")
         long add(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                 @RequestParam String user,
+                 @RequestHeader("X-OpenJob-Agent") String agent,
                  @RequestParam String company,
                  @RequestParam String title,
                  @RequestParam(required = false) String url) {
             requireToken(token);
-            return store.add(user, company, title, url);
+            return store.add(owner(agent), company, title, url);
         }
 
         @PatchMapping("/api/applications/{id}")
         void mark(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
+                  @RequestHeader("X-OpenJob-Agent") String agent,
                   @PathVariable long id,
-                  @RequestParam String user,
                   @RequestParam String status) {
             requireToken(token);
             if (!STATUSES.contains(status)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "unknown status: " + status);
             }
-            if (store.mark(user, id, status) == 0) {
+            if (store.mark(owner(agent), id, status) == 0) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND);
             }
         }
 
         @GetMapping("/api/criteria")
         String criteria(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                        @RequestParam String user) {
+                        @RequestHeader("X-OpenJob-Agent") String agent) {
             requireToken(token);
-            String text = store.criteria(user);
+            String text = store.criteria(owner(agent));
             if (text == null) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no criteria for this user");
             }
@@ -105,10 +116,18 @@ public class OpenJobApplication {
 
         @PostMapping("/api/criteria")
         void saveCriteria(@RequestHeader(value = "X-OpenJob-Token", required = false) String token,
-                          @RequestParam String user,
+                          @RequestHeader("X-OpenJob-Agent") String agent,
                           @RequestParam String text) {
             requireToken(token);
-            store.saveCriteria(user, text);
+            store.saveCriteria(owner(agent), text);
+        }
+
+        private String owner(String agent) {
+            String email = userAgents.emailFor(agent);
+            if (email == null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "unknown agent");
+            }
+            return email;
         }
 
         private void requireToken(String token) {
