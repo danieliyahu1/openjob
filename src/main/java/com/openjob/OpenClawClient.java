@@ -1,6 +1,7 @@
 package com.openjob;
 
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -11,14 +12,22 @@ import org.springframework.web.client.RestClient;
 @Component
 class OpenClawClient {
 
+    /** A chat turn can take minutes; the cap is only there to free the thread. */
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(120);
+
     private final RestClient http;
 
-    OpenClawClient(@Value("${OPENCLAW_URL:http://127.0.0.1:18789}") String url,
-                   @Value("${OPENCLAW_TOKEN:}") String token) {
+    OpenClawClient(@Value("${OPENCLAW_URL}") String url,
+                   @Value("${OPENCLAW_TOKEN}") String token) {
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder()
+                        .version(HttpClient.Version.HTTP_1_1)
+                        .connectTimeout(CONNECT_TIMEOUT)
+                        .build());
+        factory.setReadTimeout(READ_TIMEOUT);
         this.http = RestClient.builder()
-                // The gateway's HTTP/WS multiplexer rejects HTTP/2 upgrade attempts.
-                .requestFactory(new JdkClientHttpRequestFactory(
-                        HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build()))
+                .requestFactory(factory)
                 .baseUrl(url)
                 .defaultHeader("Authorization", "Bearer " + token)
                 .build();
@@ -32,6 +41,9 @@ class OpenClawClient {
                 .body(request)
                 .retrieve()
                 .body(ChatResponse.class);
+        if (response == null || response.choices() == null || response.choices().isEmpty()) {
+            throw new IllegalStateException("the gateway returned no reply");
+        }
         return response.choices().getFirst().message().content();
     }
 

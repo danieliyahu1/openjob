@@ -9,7 +9,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,7 +40,7 @@ class AutomationController {
 
     @GetMapping("/api/automations")
     List<AutomationsClient.Job> list(HttpSession session) {
-        return automations.list(agent(session));
+        return automations.list(readyAgent(session));
     }
 
     @PostMapping("/api/automations")
@@ -50,7 +52,7 @@ class AutomationController {
                                  @RequestParam(defaultValue = "0") int day,
                                  @RequestParam(defaultValue = "UTC") String timezone,
                                  HttpSession session) {
-        String agent = agent(session);
+        String agent = readyAgent(session);
         String jobName = name == null ? "" : name.strip();
         String message = prompt == null ? "" : prompt.strip();
         if (jobName.isEmpty() || message.isEmpty()) {
@@ -136,7 +138,12 @@ class AutomationController {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
-        String agent = userAgents.ensure(user);
+        return userAgents.ensure(user);
+    }
+
+    /** The slug, with the agent and workspace guaranteed to exist before a call. */
+    private String readyAgent(HttpSession session) {
+        String agent = agent(session);
         try {
             provisioner.ensure(agent);
         } catch (RuntimeException notReady) {
@@ -146,17 +153,29 @@ class AutomationController {
         return agent;
     }
 
-    /** A job is only visible to the account that owns its agent. */
+    /**
+     * A job is only visible to the account that owns its agent. Authorizing a
+     * toggle or a delete must not depend on the provisioner being up, so this
+     * uses the stored slug only.
+     */
     private void owned(String id, HttpSession session) {
         String agent = agent(session);
-        AutomationsClient.Job job;
-        try {
-            job = automations.get(id);
-        } catch (IllegalStateException notFound) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-        }
+        AutomationsClient.Job job = automations.get(id);
         if (job.agentId() == null || !job.agentId().equals(agent)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
+    }
+
+    @ExceptionHandler(AutomationsClient.JobNotFoundException.class)
+    ResponseEntity<Void> missing() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
+    /** The gateway did not answer; that is an outage, not a missing job. */
+    @ExceptionHandler(AutomationsClient.GatewayException.class)
+    ResponseEntity<Map<String, String>> gatewayDown(AutomationsClient.GatewayException problem) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("error", "GATEWAY_UNAVAILABLE",
+                        "message", "the scheduler is not reachable, try again"));
     }
 }

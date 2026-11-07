@@ -3,6 +3,7 @@ package com.openjob;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -26,15 +28,21 @@ class AutomationsClient {
 
     private static final String[] DAYS = {"Sunday", "Monday", "Tuesday", "Wednesday",
             "Thursday", "Friday", "Saturday"};
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
 
     private final RestClient http;
 
-    AutomationsClient(@Value("${OPENCLAW_URL:http://127.0.0.1:18789}") String url,
-                      @Value("${OPENCLAW_TOKEN:}") String token) {
+    AutomationsClient(@Value("${OPENCLAW_URL}") String url,
+                      @Value("${OPENCLAW_TOKEN}") String token) {
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder()
+                        .version(HttpClient.Version.HTTP_1_1)
+                        .connectTimeout(CONNECT_TIMEOUT)
+                        .build());
+        factory.setReadTimeout(READ_TIMEOUT);
         this.http = RestClient.builder()
-                // The gateway's HTTP/WS multiplexer rejects HTTP/2 upgrade attempts.
-                .requestFactory(new JdkClientHttpRequestFactory(
-                        HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build()))
+                .requestFactory(factory)
                 .baseUrl(url)
                 .defaultHeader("Authorization", "Bearer " + token)
                 .build();
@@ -87,15 +95,37 @@ class AutomationsClient {
                     .retrieve()
                     .body(RpcResponse.class);
         } catch (RestClientResponseException failure) {
-            throw new IllegalStateException(
+            if (failure.getStatusCode().value() == 404) {
+                throw new JobNotFoundException();
+            }
+            throw new GatewayException(
                     "gateway rejected " + method + ": " + failure.getStatusCode(), failure);
+        } catch (ResourceAccessException unreachable) {
+            throw new GatewayException("gateway unreachable for " + method, unreachable);
         }
         if (response == null || !response.ok()) {
+            String code = response == null || response.error() == null
+                    ? "" : response.error().code();
+            if ("not_found".equalsIgnoreCase(code)) {
+                throw new JobNotFoundException();
+            }
             String message = response == null || response.error() == null
                     ? "no response" : response.error().message();
-            throw new IllegalStateException("gateway rejected " + method + ": " + message);
+            throw new GatewayException("gateway rejected " + method + ": " + message, null);
         }
         return response.payload();
+    }
+
+    /** The gateway could not answer; this is an outage, not a missing job. */
+    static class GatewayException extends RuntimeException {
+
+        GatewayException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    /** The gateway answered, and the job does not exist. */
+    static class JobNotFoundException extends RuntimeException {
     }
 
     private static Job job(JsonNode node) {
