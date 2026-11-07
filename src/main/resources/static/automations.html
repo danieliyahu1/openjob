@@ -127,6 +127,13 @@
       note.className = kind || '';
     }
 
+    // datetime-local has no timezone; toISOString() would shift the value to UTC.
+    function localDateTime(when) {
+      const pad = (part) => String(part).padStart(2, '0');
+      return when.getFullYear() + '-' + pad(when.getMonth() + 1) + '-' + pad(when.getDate())
+        + 'T' + pad(when.getHours()) + ':' + pad(when.getMinutes());
+    }
+
     function syncFields() {
       const value = repeat.value;
       dayField.hidden = value !== 'weekly';
@@ -135,9 +142,7 @@
       timeInput.required = value !== 'once';
       dateInput.required = value === 'once';
       if (value === 'once' && !dateInput.value) {
-        const soon = new Date(Date.now() + 60 * 60 * 1000);
-        soon.setSeconds(0, 0);
-        dateInput.value = soon.toISOString().slice(0, 16);
+        dateInput.value = localDateTime(new Date(Date.now() + 60 * 60 * 1000));
       }
     }
     repeat.addEventListener('change', syncFields);

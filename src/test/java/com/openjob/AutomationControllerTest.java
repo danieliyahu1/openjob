@@ -35,6 +35,7 @@ class AutomationControllerTest {
 
         assertEquals("at", schedule.get("kind"));
         assertEquals("2026-11-10T08:00:00Z", schedule.get("at"));
+        assertEquals("Europe/Berlin", schedule.get("tz"));
     }
 
     @Test
@@ -43,5 +44,12 @@ class AutomationControllerTest {
                 AutomationsClient.describe(json.readTree("{\"kind\":\"cron\",\"expr\":\"30 9 * * *\"}")));
         assertEquals("Every Monday at 18:05",
                 AutomationsClient.describe(json.readTree("{\"kind\":\"cron\",\"expr\":\"5 18 * * 1\"}")));
+    }
+
+    @Test
+    void describeRendersOnceInTheJobsTimezone() throws Exception {
+        assertEquals("Once on 10 Nov 2026 09:00",
+                AutomationsClient.describe(json.readTree(
+                        "{\"kind\":\"at\",\"at\":\"2026-11-10T08:00:00Z\",\"tz\":\"Europe/Berlin\"}")));
     }
 }

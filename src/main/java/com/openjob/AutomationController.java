@@ -96,7 +96,11 @@ class AutomationController {
             }
             try {
                 String at = LocalDateTime.parse(date).atZone(zone).toInstant().toString();
-                return Map.of("kind", "at", "at", at);
+                Map<String, Object> spec = new LinkedHashMap<>();
+                spec.put("kind", "at");
+                spec.put("at", at);
+                spec.put("tz", zone.getId());
+                return spec;
             } catch (DateTimeParseException badDate) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid date and time");
             }

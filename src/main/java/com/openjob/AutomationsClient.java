@@ -117,7 +117,7 @@ class AutomationsClient {
         if ("at".equals(kind)) {
             try {
                 return "Once on " + Instant.parse(schedule.path("at").asText())
-                        .atZone(ZoneId.systemDefault())
+                        .atZone(zoneOf(schedule))
                         .format(DateTimeFormatter.ofPattern("d MMM yyyy HH:mm"));
             } catch (RuntimeException notIso) {
                 return "Once";
@@ -154,6 +154,15 @@ class AutomationsClient {
             return String.format("%02d:%02d", Integer.parseInt(hour), Integer.parseInt(minute));
         } catch (NumberFormatException notSimple) {
             return hour + ":" + minute;
+        }
+    }
+
+    /** The job's own timezone, so a user abroad still sees the time they picked. */
+    private static ZoneId zoneOf(JsonNode schedule) {
+        try {
+            return ZoneId.of(schedule.path("tz").asText());
+        } catch (RuntimeException unknownZone) {
+            return ZoneId.systemDefault();
         }
     }
 
