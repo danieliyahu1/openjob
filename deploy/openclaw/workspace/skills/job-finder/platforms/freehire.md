@@ -31,12 +31,12 @@ minute. Read the headers rather than assuming.
 | Endpoint | Use it for |
 | --- | --- |
 | `GET /jobs/search` | filtered search — the one you want |
-| `GET /agent/jobs/search` | same filters, plus full `description` *(documented, unverified)* |
+| `GET /agent/jobs/search` | same filters, plus full `description` |
 | `GET /jobs/facets` | counts per facet value — narrow a search without paging |
 | `GET /jobs` | newest first, **no filters at all** |
-| `GET /jobs/{public_slug}` | one job by slug; serves closed jobs too *(unverified)* |
-| `GET /jobs/{slug}/apply-form` | the captured ATS form *(unverified)* |
-| `GET /jobs/{slug}/copies` | per-city duplicates of one role *(unverified)* |
+| `GET /jobs/{public_slug}` | one job by slug; serves closed jobs too |
+| `GET /jobs/{slug}/apply-form` | the captured ATS form |
+| `GET /jobs/{slug}/copies` | per-city duplicates of one role |
 
 ## 4. Search — `GET /jobs/search`
 

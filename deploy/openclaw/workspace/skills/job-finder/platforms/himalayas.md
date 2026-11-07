@@ -19,7 +19,7 @@ browser for this platform — the HTML pages answer scripts with a Cloudflare
 | --- | --- |
 | `GET /jobs/api/search` | filtered search |
 | `GET /jobs/api` | the full unfiltered feed, paginated |
-| `GET /jobs/api/companies/:company/jobs/:slug` | confirm one job is still open *(unverified)* |
+| `GET /jobs/api/companies/:company/jobs/:slug` | confirm one job is still open |
 
 ## 3. Search — `GET /jobs/api/search`
 
