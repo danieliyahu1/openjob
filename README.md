@@ -58,12 +58,13 @@ account gets its own agent and workspace, created on demand: the app stores
 provisioner sidecar in the agent pod creates the agent and workspace when they
 are missing. The new agent's config is a copy of the template agent `main` with
 only its name and workspace changed, so editing `main` also changes every agent
-created afterwards. Workspaces, the gateway's shared state (scheduler and run
-history), and per-agent sessions live on the `openclaw-data` PVC, so they
-survive agent pod restarts. Agent entries still come from the image's
-`openclaw.json`; the app re-registers every known agent with the provisioner at
-startup and every five minutes so restored automations never point at a missing
-agent. The conversation id is still the email.
+created afterwards. Workspaces, the gateway config, the shared state (scheduler
+and run history), and per-agent sessions live on the `openclaw-data` PVC, so
+they survive agent pod restarts. The config is seeded from the image on first
+run; on every start an init container rebuilds each agent entry from the image's
+template agent `main`, keeping only its slug and workspace, so agent config
+changes ship with the image while the rest of the config stays editable on the
+volume. The conversation id is still the email.
 
 Applications are stored in SQLite (`openjob.db`, table `applications`) and managed
 through `GET/POST /api/applications` and `PATCH /api/applications/{id}`, guarded by
@@ -109,7 +110,7 @@ deployment source, and the image is pinned by commit SHA.
 - URL: https://openjob.danieliyahu.com (public)
 - `openjob` — the web app, one replica, SQLite on a 1 Gi `local-path` PVC
 - `openclaw` — the agent gateway, ClusterIP only, reached at `http://openclaw:18789`;
-  workspaces, scheduler state and sessions on a 5 Gi `local-path` PVC
+  config, workspaces, scheduler state and sessions on a 5 Gi `local-path` PVC
 
 Secrets come from OCI Vault through the `oci-vault` `ClusterSecretStore`; only
 the entry names live in Git:

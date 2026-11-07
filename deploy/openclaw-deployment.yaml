@@ -33,15 +33,21 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
-        # subPath mounts need their directories to exist on the volume, and
-        # creating them here leaves them owned by the node user.
+        # Seeds the persisted config and rebuilds every agent from the image's
+        # template agent before the gateway reads it.
         - name: prepare-data
           image: ghcr.io/danieliyahu1/openjob-agent:dd4d7284eece88db06c8d815dd45e7e65a33f632
           imagePullPolicy: IfNotPresent
-          command:
-            - sh
-            - -c
-            - mkdir -p /data/workspaces /data/state /data/agents
+          command: ["node", "/opt/openjob/merge-config.mjs"]
+          env:
+            - name: OPENCLAW_DATA_ROOT
+              value: /data
+            - name: OPENCLAW_DEFAULT_CONFIG
+              value: /opt/openjob/openclaw.default.json
+            - name: AGENT_WORKSPACES_ROOT
+              value: /home/node/.openclaw/workspaces
+            - name: TEMPLATE_AGENT
+              value: main
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -57,6 +63,10 @@ spec:
             - name: gateway
               containerPort: 18789
           env:
+            # The live config is on the PVC; the image copy is the template the
+            # init container merges from.
+            - name: OPENCLAW_CONFIG_PATH
+              value: /home/node/.openclaw/config/openclaw.json
             # Fed by OCI Vault through the openjob-secrets ExternalSecret. Optional
             # so the gateway starts before the Vault entries exist.
             - name: OPENCODE_API_KEY
@@ -156,11 +166,15 @@ spec:
             # Chromium needs shared memory larger than the 64Mi default.
             - name: shm
               mountPath: /dev/shm
-            # Persistent data. The image's config and workspace template are
-            # deliberately left in the container so updates keep applying.
+            # Persistent data. The workspace template stays in the container so
+            # image updates keep applying to new workspaces.
             - name: data
               mountPath: /home/node/.openclaw/workspaces
               subPath: workspaces
+            # The live config, seeded and reconciled from the image at startup.
+            - name: data
+              mountPath: /home/node/.openclaw/config
+              subPath: config
             # Automations, run history, approvals and registries.
             - name: data
               mountPath: /home/node/.openclaw/state

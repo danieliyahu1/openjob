@@ -1,7 +1,25 @@
 services:
+  config-init:
+    build: ./deploy/openclaw
+    command: ["node", "/opt/openjob/merge-config.mjs"]
+    environment:
+      OPENCLAW_DATA_ROOT: /home/node/.openclaw
+      OPENCLAW_DEFAULT_CONFIG: /opt/openjob/openclaw.default.json
+      AGENT_WORKSPACES_ROOT: /home/node/.openclaw/workspaces
+      TEMPLATE_AGENT: main
+    volumes:
+      - workspaces:/home/node/.openclaw/workspaces
+      - config:/home/node/.openclaw/config
+      - state:/home/node/.openclaw/state
+      - agents:/home/node/.openclaw/agents
+
   openclaw:
     build: ./deploy/openclaw
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
     environment:
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/config/openclaw.json
       OPENCODE_API_KEY: ${OPENCODE_API_KEY:?}
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
       PLANE_API_KEY: ${PLANE_API_KEY:-}
@@ -9,6 +27,7 @@ services:
       OPENJOB_API_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
     volumes:
       - workspaces:/home/node/.openclaw/workspaces
+      - config:/home/node/.openclaw/config
       - state:/home/node/.openclaw/state
       - agents:/home/node/.openclaw/agents
 
@@ -35,5 +54,6 @@ services:
 
 volumes:
   workspaces:
+  config:
   state:
   agents:
