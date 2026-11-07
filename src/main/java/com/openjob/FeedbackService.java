@@ -3,10 +3,8 @@ package com.openjob;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
-import java.util.ArrayDeque;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +29,6 @@ import org.springframework.web.client.RestClient;
 class FeedbackService {
 
     static final int MAX_MESSAGE = 1500;
-    private static final int RATE_LIMIT = 5;
-    private static final Duration RATE_WINDOW = Duration.ofMinutes(10);
     private static final Logger log = LoggerFactory.getLogger(FeedbackService.class);
 
     private final MeterRegistry registry;
@@ -41,8 +37,7 @@ class FeedbackService {
     private final String chatId;
     private final String endpoint;
 
-    /** client key -> timestamps of accepted submissions. One replica, so memory is enough. */
-    private final Map<String, ArrayDeque<Long>> submissions = new ConcurrentHashMap<>();
+    private final RateLimiter submissions = new RateLimiter(5, Duration.ofMinutes(10));
 
     record Outcome(boolean delivered) {
     }
@@ -82,7 +77,7 @@ class FeedbackService {
 
     Outcome submit(String message, String clientIp) {
         String text = validate(message);
-        long retryAfter = permit(clientIp == null ? "unknown" : clientIp);
+        long retryAfter = submissions.permit(clientIp);
         if (retryAfter > 0) {
             count("rate_limited");
             throw new FeedbackException(429, "RATE_LIMITED",
@@ -132,36 +127,6 @@ class FeedbackService {
                     "Feedback must be at most " + MAX_MESSAGE + " characters", null);
         }
         return text;
-    }
-
-    /**
-     * Records one submission for the client and returns 0 when it is allowed,
-     * or the seconds to wait when it is not.
-     */
-    private long permit(String client) {
-        long now = System.currentTimeMillis();
-        long windowStart = now - RATE_WINDOW.toMillis();
-        ArrayDeque<Long> hits = submissions.computeIfAbsent(client, key -> new ArrayDeque<>());
-        synchronized (hits) {
-            while (!hits.isEmpty() && hits.peekFirst() < windowStart) {
-                hits.removeFirst();
-            }
-            if (hits.size() >= RATE_LIMIT) {
-                long oldest = hits.peekFirst() == null ? now : hits.peekFirst();
-                long waitMillis = oldest + RATE_WINDOW.toMillis() - now;
-                return Math.max(1, (waitMillis + 999) / 1000);
-            }
-            hits.addLast(now);
-        }
-        if (submissions.size() > 1000) {
-            submissions.entrySet().removeIf(entry -> {
-                ArrayDeque<Long> queue = entry.getValue();
-                synchronized (queue) {
-                    return queue.isEmpty() || queue.peekLast() < windowStart;
-                }
-            });
-        }
-        return 0;
     }
 
     private void count(String outcome) {

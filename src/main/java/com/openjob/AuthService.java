@@ -1,9 +1,7 @@
 package com.openjob;
 
-import java.util.ArrayDeque;
+import java.time.Duration;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -17,8 +15,6 @@ class AuthService {
 
     static final int MIN_PASSWORD = 8;
     static final int MAX_PASSWORD = 64;
-    private static final int MAX_ATTEMPTS = 10;
-    private static final long WINDOW_MILLIS = 15 * 60 * 1000L;
     private static final String EMAIL = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
 
     private final UserStore users;
@@ -26,8 +22,7 @@ class AuthService {
     /** Compared against when the email is unknown, so both failures cost the same. */
     private final String decoy = encoder.encode("openjob-decoy-" + System.nanoTime());
 
-    /** client key -> timestamps of attempts. One replica, so memory is enough. */
-    private final Map<String, ArrayDeque<Long>> attempts = new ConcurrentHashMap<>();
+    private final RateLimiter attempts = new RateLimiter(10, Duration.ofMinutes(15));
 
     AuthService(UserStore users) {
         this.users = users;
@@ -48,7 +43,7 @@ class AuthService {
     String signup(String email, String password, String client) {
         String user = email(email);
         password(password);
-        long wait = permit(client);
+        long wait = attempts.permit(client);
         if (wait > 0) {
             throw new AuthException(429, "RATE_LIMITED",
                     "Too many attempts; try again in " + wait + " seconds");
@@ -60,7 +55,7 @@ class AuthService {
     }
 
     String login(String email, String password, String client) {
-        long wait = permit(client);
+        long wait = attempts.permit(client);
         if (wait > 0) {
             throw new AuthException(429, "RATE_LIMITED",
                     "Too many attempts; try again in " + wait + " seconds");
@@ -76,7 +71,7 @@ class AuthService {
             }
             throw new AuthException(401, "INVALID_CREDENTIALS", "Invalid email or password");
         }
-        attempts.remove(client == null ? "unknown" : client);
+        attempts.reset(client);
         return user;
     }
 
@@ -98,32 +93,5 @@ class AuthService {
             throw new AuthException(400, "INVALID_PASSWORD",
                     "Password must be " + MIN_PASSWORD + " to " + MAX_PASSWORD + " characters");
         }
-    }
-
-    /** Records one attempt for the client and returns 0, or the seconds to wait. */
-    private long permit(String client) {
-        String key = client == null ? "unknown" : client;
-        long now = System.currentTimeMillis();
-        long windowStart = now - WINDOW_MILLIS;
-        ArrayDeque<Long> hits = attempts.computeIfAbsent(key, unused -> new ArrayDeque<>());
-        synchronized (hits) {
-            while (!hits.isEmpty() && hits.peekFirst() < windowStart) {
-                hits.removeFirst();
-            }
-            if (hits.size() >= MAX_ATTEMPTS) {
-                long oldest = hits.peekFirst() == null ? now : hits.peekFirst();
-                return Math.max(1, (oldest + WINDOW_MILLIS - now + 999) / 1000);
-            }
-            hits.addLast(now);
-        }
-        if (attempts.size() > 1000) {
-            attempts.entrySet().removeIf(entry -> {
-                ArrayDeque<Long> queue = entry.getValue();
-                synchronized (queue) {
-                    return queue.isEmpty() || queue.peekLast() < windowStart;
-                }
-            });
-        }
-        return 0;
     }
 }

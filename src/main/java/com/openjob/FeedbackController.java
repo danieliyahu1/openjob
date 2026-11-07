@@ -31,7 +31,7 @@ class FeedbackController {
                                                HttpServletRequest request) {
         try {
             FeedbackService.Outcome outcome = feedback.submit(
-                    body == null ? null : body.message(), clientKey(request));
+                    body == null ? null : body.message(), ClientAddress.of(request));
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("accepted", true);
             payload.put("delivered", outcome.delivered());
@@ -46,17 +46,5 @@ class FeedbackController {
             }
             return builder.body(payload);
         }
-    }
-
-    /** Cloudflare puts the visitor address first in X-Forwarded-For. */
-    private static String clientKey(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            String first = forwarded.split(",")[0].trim();
-            if (!first.isEmpty()) {
-                return first;
-            }
-        }
-        return request.getRemoteAddr();
     }
 }
