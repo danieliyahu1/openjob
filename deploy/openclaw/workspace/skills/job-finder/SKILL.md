@@ -57,12 +57,13 @@ dictates their criteria, save them with `--set` and confirm what was saved.
 
 ## Known adapters (optional)
 
-Any job board is fair game. These two are just written-up notes for boards we
+Any job board is fair game. These are just written-up notes for boards we
 already solved:
 
 | Platform | Adapter | Access |
 | --- | --- | --- |
 | HireMe (`hiremetech.com`) | `platforms/hiremetech.md` | public JSON API, no login |
+| Himalayas (`himalayas.app`) | `platforms/himalayas.md` | public JSON API, no login |
 | LinkedIn (`linkedin.com`) | `platforms/linkedin.md` | browser session, needs login |
 
 - Use the board the user names. If they name none, prefer HireMe (cheapest: API
