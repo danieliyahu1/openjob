@@ -22,27 +22,33 @@ class AuthController {
 
     private final AuthService auth;
     private final UserAgentStore agents;
-    private final ProvisionerClient provisioner;
+    private final AgentProvisioning provisioning;
 
-    AuthController(AuthService auth, UserAgentStore agents, ProvisionerClient provisioner) {
+    AuthController(AuthService auth, UserAgentStore agents, AgentProvisioning provisioning) {
         this.auth = auth;
         this.agents = agents;
-        this.provisioner = provisioner;
+        this.provisioning = provisioning;
     }
 
+    /**
+     * The account is written only once its agent exists, so "signed up" always
+     * means the app can be used. When the agent cannot be created the handler
+     * below answers 503 and nothing is stored.
+     */
     @PostMapping("/api/auth/signup")
     ResponseEntity<Void> signup(@RequestParam String email, @RequestParam String password,
                                 HttpServletRequest request) {
-        String user = auth.signup(email, password, client(request));
+        String user = auth.verifySignup(email, password, ClientAddress.of(request));
+        provisioning.ensure(agents.ensure(user));
+        auth.create(user, password);
         signIn(request, user);
-        prepare(user);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/api/auth/login")
     ResponseEntity<Void> login(@RequestParam String email, @RequestParam String password,
                                HttpServletRequest request) {
-        signIn(request, auth.login(email, password, client(request)));
+        signIn(request, auth.login(email, password, ClientAddress.of(request)));
         return ResponseEntity.noContent().build();
     }
 
@@ -71,32 +77,22 @@ class AuthController {
                 .body(Map.of("error", problem.code, "message", problem.getMessage()));
     }
 
+    /** The agent is missing and the sidecar could not create it, so no account was written. */
+    @ExceptionHandler(AgentProvisioning.AgentUnavailable.class)
+    ResponseEntity<Map<String, String>> agentUnavailable(AgentProvisioning.AgentUnavailable problem) {
+        Throwable cause = problem.getCause();
+        log.warn("signup_agent_failed slug={} cause={}", problem.slug(),
+                cause == null ? "unknown" : cause.getClass().getSimpleName());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "AGENT_NOT_READY",
+                        "message", "Your agent could not be created, so no account was made. "
+                                + "Please try again in a moment."));
+    }
+
     private static void signIn(HttpServletRequest request, String user) {
         if (request.getSession(false) != null) {
             request.changeSessionId();
         }
         request.getSession(true).setAttribute(USER, user);
-    }
-
-    /** Best effort: /message provisions again, so a failure here only costs time. */
-    private void prepare(String user) {
-        try {
-            provisioner.ensure(agents.ensure(user));
-        } catch (RuntimeException problem) {
-            log.warn("agent_provisioning_failed slug={} error={}",
-                    agents.slugFor(user), problem.getClass().getSimpleName());
-        }
-    }
-
-    /** Cloudflare puts the visitor address first in X-Forwarded-For. */
-    private static String client(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            String first = forwarded.split(",")[0].trim();
-            if (!first.isEmpty()) {
-                return first;
-            }
-        }
-        return request.getRemoteAddr();
     }
 }

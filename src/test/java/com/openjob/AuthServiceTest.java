@@ -39,7 +39,7 @@ class AuthServiceTest {
 
     @Test
     void signupStoresANormalizedEmailAndAHash() {
-        assertThat(auth.signup(" Me@Example.com ", "correct horse", "1.2.3.4"))
+        assertThat(signup(" Me@Example.com ", "correct horse", "1.2.3.4"))
                 .isEqualTo("me@example.com");
 
         String hash = jdbc.queryForObject("SELECT password_hash FROM users WHERE email = ?",
@@ -49,16 +49,16 @@ class AuthServiceTest {
 
     @Test
     void signupRejectsAnEmailThatAlreadyExists() {
-        auth.signup("me@example.com", "correct horse", "1.2.3.4");
+        signup("me@example.com", "correct horse", "1.2.3.4");
 
-        assertThatThrownBy(() -> auth.signup("ME@example.com", "another one", "1.2.3.4"))
+        assertThatThrownBy(() -> signup("ME@example.com", "another one", "1.2.3.4"))
                 .isInstanceOfSatisfying(AuthService.AuthException.class, problem ->
                         assertThat(problem.status).isEqualTo(409));
     }
 
     @Test
     void loginAcceptsThePasswordAndRejectsEverythingElse() {
-        auth.signup("me@example.com", "correct horse", "1.2.3.4");
+        signup("me@example.com", "correct horse", "1.2.3.4");
 
         assertThat(auth.login(" Me@Example.com", "correct horse", "5.6.7.8"))
                 .isEqualTo("me@example.com");
@@ -66,19 +66,26 @@ class AuthServiceTest {
         assertRejected("nobody@example.com", "correct horse");
     }
 
+    /** Signup as the controller runs it: validate and reserve, then write. */
+    private String signup(String email, String password, String client) {
+        String user = auth.verifySignup(email, password, client);
+        auth.create(user, password);
+        return user;
+    }
+
     @Test
     void signupValidatesEmailAndPassword() {
-        assertThatThrownBy(() -> auth.signup("not-an-email", "correct horse", "1.2.3.4"))
+        assertThatThrownBy(() -> signup("not-an-email", "correct horse", "1.2.3.4"))
                 .isInstanceOfSatisfying(AuthService.AuthException.class, problem ->
                         assertThat(problem.code).isEqualTo("INVALID_EMAIL"));
-        assertThatThrownBy(() -> auth.signup("me@example.com", "short", "1.2.3.4"))
+        assertThatThrownBy(() -> signup("me@example.com", "short", "1.2.3.4"))
                 .isInstanceOfSatisfying(AuthService.AuthException.class, problem ->
                         assertThat(problem.code).isEqualTo("INVALID_PASSWORD"));
     }
 
     @Test
     void limitsAttemptsPerClient() {
-        auth.signup("me@example.com", "correct horse", "1.2.3.4");
+        signup("me@example.com", "correct horse", "1.2.3.4");
 
         for (int attempt = 0; attempt < 10; attempt++) {
             assertRejected("me@example.com", "wrong horse");

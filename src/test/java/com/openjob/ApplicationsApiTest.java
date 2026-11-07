@@ -30,7 +30,7 @@ class ApplicationsApiTest {
     @MockitoBean
     private OpenClawClient openClaw;
     @MockitoBean
-    private ProvisionerClient provisioner;
+    private AgentProvisioning provisioning;
     @MockitoBean
     private OperationalMetrics metrics;
 

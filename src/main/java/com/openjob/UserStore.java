@@ -19,6 +19,12 @@ class UserStore {
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
+    boolean exists(String email) {
+        Integer found = jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE email = ?",
+                Integer.class, email);
+        return found != null && found > 0;
+    }
+
     /** Returns false when the email already has an account. */
     boolean create(String email, String hash) {
         return jdbc.update("""

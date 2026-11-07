@@ -40,7 +40,15 @@ class AuthService {
         }
     }
 
-    String signup(String email, String password, String client) {
+    /**
+     * Validates the address and password and applies the per-client limit,
+     * then returns the normalized email. Nothing is written yet, so the
+     * account can be created only after its agent exists.
+     *
+     * @throws AuthException 400 for bad input, 429 when the client is limited,
+     *         409 when the email is taken
+     */
+    String verifySignup(String email, String password, String client) {
         String user = email(email);
         password(password);
         long wait = attempts.permit(client);
@@ -48,10 +56,25 @@ class AuthService {
             throw new AuthException(429, "RATE_LIMITED",
                     "Too many attempts; try again in " + wait + " seconds");
         }
-        if (!users.create(user, encoder.encode(password))) {
-            throw new AuthException(409, "EMAIL_TAKEN", "That email already has an account");
+        if (users.exists(user)) {
+            throw taken();
         }
         return user;
+    }
+
+    /**
+     * Writes the account after its agent is in place.
+     *
+     * @throws AuthException 409 when another signup took the email meanwhile
+     */
+    void create(String email, String password) {
+        if (!users.create(email, encoder.encode(password))) {
+            throw taken();
+        }
+    }
+
+    private static AuthException taken() {
+        return new AuthException(409, "EMAIL_TAKEN", "That email already has an account");
     }
 
     String login(String email, String password, String client) {

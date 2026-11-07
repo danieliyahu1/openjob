@@ -32,26 +32,26 @@ public class OpenJobApplication {
         private final OpenClawClient openClaw;
         private final ApplicationStore store;
         private final UserAgentStore userAgents;
-        private final ProvisionerClient provisioner;
+        private final AgentProvisioning provisioning;
         private final OperationalMetrics metrics;
 
         MessageController(OpenClawClient openClaw, ApplicationStore store,
-                          UserAgentStore userAgents, ProvisionerClient provisioner,
+                          UserAgentStore userAgents, AgentProvisioning provisioning,
                           OperationalMetrics metrics) {
             this.openClaw = openClaw;
             this.store = store;
             this.userAgents = userAgents;
-            this.provisioner = provisioner;
+            this.provisioning = provisioning;
             this.metrics = metrics;
         }
 
         @PostMapping("/message")
         String message(@RequestParam String message, HttpSession session) {
-            String user = (String) session.getAttribute(AuthController.USER);
+            String user = requireUser(session);
             String agent = userAgents.ensure(user);
             try {
-                provisioner.ensure(agent);
-            } catch (RuntimeException notReady) {
+                provisioning.ensure(agent);
+            } catch (AgentProvisioning.AgentUnavailable notReady) {
                 throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                         "the agent is not ready, try again");
             }
@@ -65,6 +65,14 @@ public class OpenJobApplication {
                 metrics.agentFinished("failure", System.nanoTime() - started);
                 throw failure;
             }
+        }
+
+        private static String requireUser(HttpSession session) {
+            Object user = session.getAttribute(AuthController.USER);
+            if (user == null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "sign in first");
+            }
+            return user.toString();
         }
 
         /**

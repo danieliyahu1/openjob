@@ -29,13 +29,13 @@ class AutomationController {
 
     private final AutomationsClient automations;
     private final UserAgentStore userAgents;
-    private final ProvisionerClient provisioner;
+    private final AgentProvisioning provisioning;
 
     AutomationController(AutomationsClient automations, UserAgentStore userAgents,
-                         ProvisionerClient provisioner) {
+                         AgentProvisioning provisioning) {
         this.automations = automations;
         this.userAgents = userAgents;
-        this.provisioner = provisioner;
+        this.provisioning = provisioning;
     }
 
     @GetMapping("/api/automations")
@@ -141,14 +141,18 @@ class AutomationController {
         return userAgents.ensure(user);
     }
 
-    /** The slug, with the agent and workspace guaranteed to exist before a call. */
+    /**
+     * The slug, with the agent and workspace guaranteed to exist before a call.
+     * Provisioning is remembered per process, so this is free after the first
+     * request for an account.
+     */
     private String readyAgent(HttpSession session) {
         String agent = agent(session);
         try {
-            provisioner.ensure(agent);
-        } catch (RuntimeException notReady) {
+            provisioning.ensure(agent);
+        } catch (AgentProvisioning.AgentUnavailable notReady) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "the agent is not ready, try again");
+                    "your agent is not ready yet, so nothing was changed");
         }
         return agent;
     }
