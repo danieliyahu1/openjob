@@ -13,3 +13,5 @@ data:
   # SQLite lives on a persistent volume so the board survives restarts.
   OPENJOB_DB_PATH: /data/openjob.db
   MANAGEMENT_PORT: "9090"
+  # Public traffic is HTTPS at the Cloudflare edge; local dev stays on http.
+  SESSION_COOKIE_SECURE: "true"

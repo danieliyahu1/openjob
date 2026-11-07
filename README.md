@@ -63,6 +63,13 @@ the `X-OpenJob-Token` header; rows are scoped by the `user` parameter. Statuses 
 `found`, `applied`, `blocked`. Per-user match criteria live in the `criteria` table
 (`GET/POST /api/criteria`).
 
+Signing in is required for the page and `POST /message`. The first visit goes to
+`login.html`; email and password create an account (open signup) or sign in.
+Accounts live in the `users` table with a BCrypt hash. Sessions last 30 idle
+minutes and the cookie is `SameSite=Lax` and `Secure` in `deploy/`; they are
+held in memory, so a restart signs everyone out. The agent's token API and the
+anonymous feedback endpoint stay outside the sign-in.
+
 Run with `mvn spring-boot:run`, then open http://localhost:8080. Copy
 `.env.example` to `.env` and set `OPENCLAW_TOKEN` to the gateway token from
 `~/.openclaw/openclaw.json`; the Gateway also needs

@@ -14,6 +14,15 @@
     #chat input { flex: 1; padding: .5rem .75rem; font: inherit; }
     button { padding: .5rem 1rem; font: inherit; }
 
+    #account {
+      display: flex; justify-content: flex-end; align-items: baseline; gap: .75rem;
+      min-height: 1.5rem; font-size: .9rem; color: #64748b;
+    }
+    #account button {
+      padding: .25rem .5rem; border: 1px solid #e2e8f0; border-radius: .375rem;
+      background: #fff; color: inherit; font-size: .85rem; cursor: pointer;
+    }
+
     footer { display: flex; justify-content: flex-end; margin-top: 1.5rem; }
     .feedback-open {
       padding: .25rem .5rem; border: 0; background: transparent;
@@ -52,6 +61,11 @@
   </style>
 </head>
 <body>
+  <header id="account">
+    <span id="who"></span>
+    <button type="button" id="logout">Log out</button>
+  </header>
+
   <ul id="log"></ul>
   <form id="chat">
     <input id="message" placeholder="Say something" autocomplete="off" autofocus>
@@ -81,6 +95,16 @@
     const log = document.getElementById('log');
     const form = document.getElementById('chat');
     const input = document.getElementById('message');
+    const who = document.getElementById('who');
+
+    fetch('/api/auth/me')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((me) => { if (me) who.textContent = me.email; });
+
+    document.getElementById('logout').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      location.replace('/login.html');
+    });
 
     function bubble(text, who) {
       const li = document.createElement('li');
@@ -100,6 +124,10 @@
       const pending = bubble('…', 'agent');
       try {
         const response = await fetch('/message', { method: 'POST', body: new URLSearchParams({ message }) });
+        if (response.status === 401) {
+          location.replace('/login.html');
+          return;
+        }
         pending.textContent = response.ok ? await response.text() : 'error ' + response.status;
       } catch (err) {
         pending.textContent = 'error: ' + err.message;
