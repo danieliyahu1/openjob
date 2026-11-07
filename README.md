@@ -10,7 +10,7 @@ the automation UI, and the API the agent's scripts write to.
 Browser  ──►  OpenJob (Spring, SQLite)
                 │  POST /message ──► openclaw gateway
                 │                        └── per-user agent, own workspace
-                │  GET/POST /api/*  ◄── agent scripts in /opt/openjob/agent-scripts
+                │  GET/POST /api/*  ◄── agent scripts in the workspace
                 ▼
           SQLite: users, user_agents, applications, criteria
 ```
@@ -66,8 +66,8 @@ through `GET/POST /api/applications` and `PATCH /api/applications/{id}`; rows ar
 scoped to the account the agent slug belongs to, which the caller sends as
 `X-OpenJob-Agent`. Statuses are `found`, `applied`, `blocked`. Per-user match
 criteria live in the `criteria` table (`GET/POST /api/criteria`). The agent's
-scripts live in the image at `/opt/openjob/agent-scripts`, outside the writable
-workspace, and read their slug from `.openjob-id` when run from the workspace.
+scripts ship in the workspace template under `scripts/` and read their slug from
+`.openjob-id`; `sync-workspace` restores them whenever the image changes.
 
 Signing in is required for the page and `POST /message`. The first visit goes to
 `login.html`; email and password create an account (open signup) or sign in.
@@ -88,10 +88,9 @@ provisioner, `POST /message` answers 503.
 `deploy/openclaw/openclaw.json`), the provisioner sidecar that creates per-user
 agents, a one-shot workspace sync that updates existing workspaces, and this app
 talking to them at `http://openclaw:18789`. The workspace template ships in the
-repo: `deploy/openclaw/workspace/` (`skills/`, `AGENTS.md`) is copied into each
-user's workspace; the agent's scripts are baked into the image at
-`/opt/openjob/agent-scripts`. Put `OPENCODE_API_KEY` and
-`OPENCLAW_GATEWAY_TOKEN` in `.env`, then `docker compose up --build`. The app
+repo: `deploy/openclaw/workspace/` (`skills/`, `scripts/`, `AGENTS.md`) is copied
+into each user's workspace and reconciled on every start. Put `OPENCODE_API_KEY`
+and `OPENCLAW_GATEWAY_TOKEN` in `.env`, then `docker compose up --build`. The app
 keeps its SQLite file on the `appdata` volume. Only port 8080 is published.
 
 ## Production deployment

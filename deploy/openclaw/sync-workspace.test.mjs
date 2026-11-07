@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,9 +16,11 @@ function fixture() {
   const workspace = join(workspaces, slug);
 
   mkdirSync(join(template, "skills", "job-finder", "platforms"), { recursive: true });
+  mkdirSync(join(template, "scripts"), { recursive: true });
   writeFileSync(join(template, "AGENTS.md"), "v1");
   writeFileSync(join(template, "skills", "job-finder", "SKILL.md"), "skill v1");
   writeFileSync(join(template, "skills", "job-finder", "platforms", "linkedin.md"), "adapter v1");
+  writeFileSync(join(template, "scripts", "jobs.mjs"), "board client v1");
 
   mkdirSync(join(workspace, "scripts"), { recursive: true });
   mkdirSync(join(workspace, "skills", "job-finder", "platforms"), { recursive: true });
@@ -38,7 +40,7 @@ function run(template, workspaces) {
   });
 }
 
-test("copies provided files, drops the stale scripts, and keeps user data", () => {
+test("copies provided files, restores the scripts, and keeps user data", () => {
   const { root, template, workspaces, workspace } = fixture();
   try {
     const result = run(template, workspaces);
@@ -52,7 +54,10 @@ test("copies provided files, drops the stale scripts, and keeps user data", () =
         readFileSync(join(workspace, "skills", "job-finder", "platforms", "acme.md"), "utf8"),
         "learned",
         "a board the agent wrote down must survive");
-    assert.equal(existsSync(join(workspace, "scripts")), false, "the old workspace scripts are gone");
+    assert.equal(
+        readFileSync(join(workspace, "scripts", "jobs.mjs"), "utf8"),
+        "board client v1",
+        "an edited board client is replaced by the provided one");
     assert.match(readFileSync(join(workspace, ".openjob-template"), "utf8"), /^[0-9a-f]{64}\n$/);
   } finally {
     rmSync(root, { recursive: true, force: true });

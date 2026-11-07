@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Reads or writes the job match criteria for one user. Ships in the image at
-// /opt/openjob/agent-scripts, outside the writable workspace.
+// Reads or writes the job match criteria for one user. Ships in the workspace
+// template; run it from the workspace, never modify it.
 import { readFileSync } from "node:fs";
 import process from "node:process";
 

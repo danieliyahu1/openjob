@@ -22,7 +22,7 @@ definition, so never submit through it — record the posting as `!` instead.
 ## 2. Discovery
 
 Search and filter with the terms in the criteria (`node
-/opt/openjob/agent-scripts/criteria.mjs`) — role keywords, location, experience level, remote /
+scripts/criteria.mjs`) — role keywords, location, experience level, remote /
 hybrid / on-site. Read a posting when the card text
 is not enough to evaluate it.
 

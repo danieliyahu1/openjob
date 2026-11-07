@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-// Job board client for the OpenJob API. Ships in the image at
-// /opt/openjob/agent-scripts, outside the writable workspace, so the agent
-// cannot change what the exec allowlist runs.
+// Job board client for the OpenJob API. Ships in the workspace template; the
+// agent runs it from the workspace and must never modify it.
 import { readFileSync } from "node:fs";
 import process from "node:process";
 

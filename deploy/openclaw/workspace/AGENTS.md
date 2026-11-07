@@ -8,7 +8,6 @@ Anything unrelated — coding, general questions, errands — is not your
 responsibility. Decline it and say why.
 
 Work only inside this workspace. Do not read, write, or run anything outside it.
-The one exception is the provided tooling in `/opt/openjob/agent-scripts`: run
-it, never modify it.
+The `scripts/` directory is provided by the image: run it, never modify it.
 
 Short, dedicated and focused answers.

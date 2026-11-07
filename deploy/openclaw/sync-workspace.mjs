@@ -4,21 +4,20 @@
 // fix would reach new users only.
 //
 // Rules:
-// - Only provided paths are touched (AGENTS.md and skills/). User data and the
-//   workspace's .openjob-id are never read or written.
-// - Files are overwritten, never deleted — except the legacy scripts/ directory,
-//   which moved into the image. An agent may add its own board notes under
-//   skills/job-finder/platforms/, and those must survive an update.
+// - Only provided paths are touched (AGENTS.md, skills/ and scripts/). User
+//   data and the workspace's .openjob-id are never read or written.
+// - Files are overwritten, never deleted: an agent may add its own board notes
+//   under skills/job-finder/platforms/, and those must survive an update.
 // - A content fingerprint of the provided files decides whether to copy, so an
 //   unchanged image costs one directory walk.
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = process.env.WORKSPACES_ROOT || "/home/node/.openclaw/workspaces";
 const TEMPLATE = process.env.TEMPLATE_WORKSPACE || "/home/node/.openclaw/workspace";
 const MARKER = ".openjob-template";
-const PROVIDED = ["AGENTS.md", "skills"];
+const PROVIDED = ["AGENTS.md", "skills", "scripts"];
 const SLUG = /^u-[0-9a-f]{12}$/;
 
 const log = (...parts) => console.log(new Date().toISOString(), ...parts);
@@ -58,9 +57,6 @@ for (const entry of readdirSync(ROOT)) {
   for (const relative of PROVIDED) {
     cpSync(join(TEMPLATE, relative), join(workspace, relative), { recursive: true, force: true });
   }
-  // scripts/ used to ship inside the workspace; it now lives in the image. Drop
-  // the stale copy so nobody runs an outdated, writable board client.
-  rmSync(join(workspace, "scripts"), { recursive: true, force: true });
   writeFileSync(marker, `${version}\n`);
   updated += 1;
   log("workspace_synced", entry);
