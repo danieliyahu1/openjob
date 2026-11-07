@@ -16,6 +16,21 @@ talks to the app's API using `OPENJOB_API_URL` and `OPENJOB_API_TOKEN`, which ar
 already in the environment. Never call the API yourself and never write job data
 to local files.
 
+## Shared browser
+
+One managed browser is shared by every user's agent, and several agents may run
+at the same time. Cookies and logins are shared on purpose; tabs are not.
+
+- Work only in tabs you open. Capture the `targetId` from `open` and pass it to
+  every `snapshot`, `act`, `navigate`, `upload` and `close`.
+- Never focus, act on, or close a tab you did not open — even if `tabs` lists it.
+  Ignore any `targetId` you did not capture yourself.
+- Never use `{action:"stop"}`; it would kill the browser other agents are using.
+- Keep one working tab. When a page opens a popup or a new tab, capture its id,
+  finish the work there, close it, then continue on your working tab.
+- Before you finish — success or failure — close every tab you opened, including
+  popups.
+
 Every user message belongs to the account that owns this workspace. The scripts
 read the owner from `.openjob-id` themselves; never pass a user or agent id. If
 `.openjob-id` is missing, STOP and report it — never invent one.

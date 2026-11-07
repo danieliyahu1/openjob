@@ -35,29 +35,45 @@ There is no `browser_navigate`, `browser_click`, `browser_snapshot` or
 
 | Need | Call |
 | --- | --- |
-| Open a URL | `browser` `{action:"open", url:"<url>"}` |
-| Navigate current tab | `browser` `{action:"navigate", url:"<url>"}` (returns a compact snapshot inline — do not follow with `snapshot`) |
-| Structure + element refs | `browser` `{action:"snapshot"}` — add `interactive:true` for controls only, `refs:"aria"` for stable ids |
-| Snapshot inside an iframe | `browser` `{action:"snapshot", frame:"<selector>"}` |
-| Read page prose | `browser` `{action:"text", selector:"<css>", maxChars:4000}` |
-| Click | `browser` `{action:"act", kind:"click", ref:"e12"}` |
-| Type into a field | `browser` `{action:"act", kind:"type", ref:"e12", text:"..."}` |
-| Set a combobox / select | `browser` `{action:"act", kind:"select", ref:"e12", values:["Israel"]}` |
-| Fill several fields at once | `browser` `{action:"act", kind:"fill", fields:[{ref:"e1", value:"..."}, …]}` |
-| Press a key | `browser` `{action:"act", kind:"press", key:"Enter"}` |
-| Upload a file | `browser` `{action:"upload", ref:"<trigger ref>", paths:["<absolute path>"]}` — or `inputRef:"e5"` to set the file input directly |
-| Answer a JS dialog | `browser` `{action:"dialog", accept:true}` |
-| See what the page sent | `browser` `{action:"requests"}` / `{action:"console"}` / `{action:"errors"}` |
-| Screenshot for review | `browser` `{action:"screenshot", fullPage:true}` |
-| Close when done | `browser` `{action:"stop"}` (closes the whole managed browser) |
+| Open a URL (start here) | `browser` `{action:"open", url:"<url>"}` — capture the returned `targetId` |
+| Navigate your tab | `browser` `{action:"navigate", targetId:"<id>", url:"<url>"}` (returns a compact snapshot inline — do not follow with `snapshot`) |
+| Structure + element refs | `browser` `{action:"snapshot", targetId:"<id>"}` — add `interactive:true` for controls only, `refs:"aria"` for stable ids |
+| Snapshot inside an iframe | `browser` `{action:"snapshot", targetId:"<id>", frame:"<selector>"}` |
+| Read page prose | `browser` `{action:"text", targetId:"<id>", selector:"<css>", maxChars:4000}` |
+| Click | `browser` `{action:"act", kind:"click", targetId:"<id>", ref:"e12"}` |
+| Type into a field | `browser` `{action:"act", kind:"type", targetId:"<id>", ref:"e12", text:"..."}` |
+| Set a combobox / select | `browser` `{action:"act", kind:"select", targetId:"<id>", ref:"e12", values:["Israel"]}` |
+| Fill several fields at once | `browser` `{action:"act", kind:"fill", targetId:"<id>", fields:[{ref:"e1", value:"..."}, …]}` |
+| Press a key | `browser` `{action:"act", kind:"press", targetId:"<id>", key:"Enter"}` |
+| Upload a file | `browser` `{action:"upload", targetId:"<id>", ref:"<trigger ref>", paths:["<absolute path>"]}` — or `inputRef:"e5"` to set the file input directly |
+| Answer a JS dialog | `browser` `{action:"dialog", targetId:"<id>", accept:true}` |
+| See what the page sent | `browser` `{action:"requests", targetId:"<id>"}` / `{action:"console", targetId:"<id>"}` / `{action:"errors", targetId:"<id>"}` |
+| Screenshot for review | `browser` `{action:"screenshot", targetId:"<id>", fullPage:true}` |
+| Close your tab | `browser` `{action:"close", targetId:"<id>"}` |
 
 Rules that matter:
 
 - **Refs belong to a tab and a document.** Pass `targetId` from the snapshot into
   later `act` calls. After anything that navigates, re-snapshot before using refs.
-- **`open` on an already-running browser reuses it**; `navigate` keeps the tab.
+- **`open` reuses the running browser; the tab it gives you is still yours.**
+  Capture its `targetId` and use it from then on.
 - **File paths for `upload` must be absolute.** The tailored CV path is absolute,
   so pass it as-is — never a `file://` URL.
+
+## Shared browser
+
+One managed browser is shared by every user's agent, and several agents may run
+at the same time. Cookies and logins are shared on purpose; tabs are not.
+
+- Work only in tabs you open. Capture the `targetId` from `open` and pass it to
+  every `snapshot`, `act`, `navigate`, `upload` and `close`.
+- Never focus, act on, or close a tab you did not open — even if `tabs` lists it.
+  Ignore any `targetId` you did not capture yourself.
+- Never use `{action:"stop"}`; it would kill the browser other agents are using.
+- Keep one working tab. When a page opens a popup or a new tab, capture its id,
+  finish the work there, close it, then continue on your working tab.
+- Before you finish — success or failure — close every tab you opened, including
+  popups.
 
 ## Where applying sits in the pipeline
 
@@ -127,14 +143,16 @@ Searching and applying have different rules, and they happen in different places
    the board to a company career page or an ATS on a different host. Classify that
    destination form as an **authenticated** or **non-authenticated** application
    (Rule 8). Then find and click the Apply control there
-   (`browser` `{action:"act", kind:"click", ref:"…"}`); if the click opens a new
-   tab, switch to it with `browser` `{action:"tabs"}` → `{action:"focus"}`.
+   (`browser` `{action:"act", kind:"click", targetId:"<id>", ref:"…"}`); if the
+   click opens a new tab, capture its `targetId` from `tabs` and continue there;
+   close it before returning to your working tab.
    The form is frequently inside an iframe and served by an ATS — take a snapshot
-   (`browser` `{action:"snapshot"}`, or `{action:"snapshot", frame:"<iframe selector>"}`
+   (`browser` `{action:"snapshot", targetId:"<id>"}`, or
+   `{action:"snapshot", targetId:"<id>", frame:"<iframe selector>"}`
    when the fields live in a child frame) to reveal them.
 6. **Enumerate the fields.** Mark required (`*`) vs optional, and note each
    type: textbox, combobox, file, textarea, checkbox. Use
-   `browser` `{action:"snapshot", interactive:true}` so only controls come back.
+   `browser` `{action:"snapshot", targetId:"<id>", interactive:true}` so only controls come back.
 7. **Assemble values from the CV:**
    - First/last name, email, phone. Set the country combobox with
      `act` `kind:"select"` (`values:["Israel"]`), and type the national number the
@@ -144,9 +162,9 @@ Searching and applying have different rules, and they happen in different places
    - Location or other fields only if present in the CV; if the location is not
      present, the default is `Israel, Tel Aviv`.
 8. **Attach the tailored CV.** Prefer setting the file input directly:
-   `browser` `{action:"upload", inputRef:"<ref of input[type=file]>", paths:["<absolute path>"]}`.
+   `browser` `{action:"upload", targetId:"<id>", inputRef:"<ref of input[type=file]>", paths:["<absolute path>"]}`.
    If the control hides behind a button that opens a chooser, pass the trigger ref
-   instead: `{action:"upload", ref:"<button ref>", paths:[…]}`. Confirm the page
+   instead: `{action:"upload", targetId:"<id>", ref:"<button ref>", paths:[…]}`. Confirm the page
    shows the filename; re-snapshot if it does not.
 9. **Optional fields.** Add a cover letter or personal note only if the user
    wants one, and keep it to CV facts. Leave unknown optional fields blank rather
@@ -175,11 +193,11 @@ Searching and applying have different rules, and they happen in different places
 
 ## Handling different forms
 
-- **Iframes:** snapshot the frame (`{action:"snapshot", frame:"<selector>"}`),
+- **Iframes:** snapshot the frame (`{action:"snapshot", targetId:"<id>", frame:"<selector>"}`),
   or act on refs returned from a frame-aware snapshot; upload works across frames.
-- **Comboboxes** (country, source, etc.): `{action:"act", kind:"select", ref:"…", values:["…"]}`.
+- **Comboboxes** (country, source, etc.): `{action:"act", kind:"select", targetId:"<id>", ref:"…", values:["…"]}`.
   If it is a custom (non-`<select>`) dropdown, click it, snapshot, then click the option.
-- **File inputs:** `{action:"upload", inputRef:"…", paths:["<absolute path>"]}`;
+- **File inputs:** `{action:"upload", targetId:"<id>", inputRef:"…", paths:["<absolute path>"]}`;
   if a chooser dialog blocks, use the trigger-ref form of `upload` in the same call.
 - **Multi-step / paginated forms:** complete a step, re-snapshot, continue.
 - **Multiple postings:** repeat the whole workflow per posting and report each.
