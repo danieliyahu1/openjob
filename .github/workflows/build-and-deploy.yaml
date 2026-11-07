@@ -31,7 +31,9 @@ jobs:
         run: mvn -B -ntp verify
       - name: Check and test the sidecar scripts
         run: |
-          for file in deploy/openclaw/*.mjs deploy/openclaw/agent-scripts/*.mjs; do
+          for file in deploy/openclaw/*.mjs \
+                      deploy/openclaw/workspace/scripts/*.mjs \
+                      deploy/openclaw/workspace/skills/cv-adjustment/scripts/*.cjs; do
             node --check "$file"
           done
           node --test deploy/openclaw/sync-workspace.test.mjs
