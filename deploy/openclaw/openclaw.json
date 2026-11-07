@@ -29,6 +29,7 @@
             "skills_read",
             "skills_search",
             "ask_user",
+            "automations",
             "browser"
           ],
           "exec": { "mode": "allowlist" }
