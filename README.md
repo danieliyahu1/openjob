@@ -6,14 +6,49 @@ OpenJob does not implement an agent. OpenClaw searches job boards, evaluates
 postings against the criteria, and applies; OpenJob adds the account, the board,
 the automation UI, and the API the agent's scripts write to.
 
+```mermaid
+flowchart LR
+    subgraph visitor["Visitor"]
+        browser["Browser<br/>chat · board · automations"]
+    end
+
+    subgraph k8s["Kubernetes — namespace openjob"]
+        subgraph app["openjob · 1 replica"]
+            web["OpenJob<br/>Spring Boot<br/>:8080"]
+            db[("SQLite<br/>users · user_agents<br/>applications · criteria")]
+        end
+
+        subgraph claw["openclaw · 1 replica"]
+            gateway["OpenClaw gateway<br/>:18789"]
+            provisioner["Provisioner sidecar<br/>:18790"]
+            workspaces["Per-user agents<br/>u-&lt;12 hex&gt;<br/>workspace + skills + scripts"]
+        end
+    end
+
+    subgraph external["External"]
+        boards["Job boards<br/>LinkedIn · Himalayas · …"]
+        telegram["Telegram<br/>feedback chat"]
+        vault["OCI Vault"]
+        metrics["VictoriaMetrics<br/>+ Grafana"]
+    end
+
+    browser -- "session<br/>/message · /api/automations" --> web
+    web -- "POST /v1/chat/completions<br/>model openclaw/&lt;slug&gt;" --> gateway
+    web -- "cron.* RPC" --> gateway
+    web -- "POST /agents" --> provisioner
+    provisioner --> workspaces
+    gateway --> workspaces
+    workspaces -- "browse + apply" --> boards
+    workspaces -- "X-OpenJob-Agent<br/>/api/applications · /api/criteria" --> web
+    web --- db
+    web -- "POST /api/feedback" --> telegram
+    web -. ":9090 /actuator/prometheus" .-> metrics
+    vault -. "secrets" .-> web
+    vault -. "secrets" .-> gateway
 ```
-Browser  ──►  OpenJob (Spring, SQLite)
-                │  POST /message ──► openclaw gateway
-                │                        └── per-user agent, own workspace
-                │  GET/POST /api/*  ◄── agent scripts in the workspace
-                ▼
-          SQLite: users, user_agents, applications, criteria
-```
+
+Solid arrows are request paths; dotted arrows are outbound integrations and
+secret delivery.
 
 ## What lives where
 
