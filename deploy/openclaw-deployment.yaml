@@ -36,7 +36,7 @@ spec:
         # subPath mounts need their directories to exist on the volume, and
         # creating them here leaves them owned by the node user.
         - name: prepare-data
-          image: ghcr.io/danieliyahu1/openjob-agent:28acb0819f70cd17d21af342d83ce83b3efac65e
+          image: ghcr.io/danieliyahu1/openjob-agent:b2fb38bbce232c3390338dd26606d66cd48940e4
           imagePullPolicy: IfNotPresent
           command:
             - sh
@@ -51,7 +51,7 @@ spec:
               mountPath: /data
       containers:
         - name: openclaw
-          image: ghcr.io/danieliyahu1/openjob-agent:28acb0819f70cd17d21af342d83ce83b3efac65e
+          image: ghcr.io/danieliyahu1/openjob-agent:b2fb38bbce232c3390338dd26606d66cd48940e4
           imagePullPolicy: IfNotPresent
           ports:
             - name: gateway
@@ -170,7 +170,7 @@ spec:
               mountPath: /home/node/.openclaw/agents
               subPath: agents
         - name: provisioner
-          image: ghcr.io/danieliyahu1/openjob-agent:28acb0819f70cd17d21af342d83ce83b3efac65e
+          image: ghcr.io/danieliyahu1/openjob-agent:b2fb38bbce232c3390338dd26606d66cd48940e4
           imagePullPolicy: IfNotPresent
           command: ["node", "/opt/openjob/provisioner.mjs"]
           ports:
