@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: openjob
-          image: ghcr.io/danieliyahu1/openjob:f3bf1844e507ad8d293d3e8bd0c5e6225dbfda52
+          image: ghcr.io/danieliyahu1/openjob:1f5ca1eecd805f7612b8e1b0fb35cf30dcc09acb
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
