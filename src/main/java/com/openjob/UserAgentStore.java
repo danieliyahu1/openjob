@@ -46,12 +46,6 @@ class UserAgentStore {
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
-    /** Every account's slug, for re-registering agents after a gateway restart. */
-    List<String> slugs() {
-        return jdbc.query("SELECT slug FROM user_agents ORDER BY created_at",
-                (rs, row) -> rs.getString(1));
-    }
-
     private static String newSlug() {
         byte[] bytes = new byte[6];
         RANDOM.nextBytes(bytes);

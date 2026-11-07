@@ -51,11 +51,4 @@ class UserAgentStoreTest {
         assertThat(store.emailFor("u-000000000000")).isNull();
     }
 
-    @Test
-    void listsEverySlug() {
-        String alice = store.ensure("alice@example.com");
-        String bob = store.ensure("bob@example.com");
-
-        assertThat(store.slugs()).containsExactlyInAnyOrder(alice, bob);
-    }
 }
