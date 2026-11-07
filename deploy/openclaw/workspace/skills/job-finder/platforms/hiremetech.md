@@ -20,7 +20,7 @@ Search: `GET https://hiremetech.com/api/jobs/search`
 - Valid filter values: `GET https://hiremetech.com/api/jobs/filter-options`
   (`remote`, `job_level`, `employment_type`, `ai_category`, `tech`, `locations`, …)
 
-Building the query from the criteria (`node scripts/plane-criteria.mjs`):
+Building the query from the criteria (`node scripts/criteria.mjs`):
 
 - Role keywords → `title`; location → `country` / `location` / `state` / `israeli`;
   work mode → `remote`; seniority → `job_level`; stack → `tech`; AI focus → `ai_category`.
