@@ -48,10 +48,11 @@ environment — see `Security` below.
 Walking skeleton: a Spring Boot 3.5 / Java 21 app with a chat page, the board
 API, and the automations page. `POST /message` forwards the text to the OpenClaw
 Gateway (`POST /v1/chat/completions`) and returns the agent's reply. Each
-signed-in account gets its own agent and workspace, created on demand: the app
-stores `email -> agent slug` in `user_agents`, routes to `openclaw/<slug>`, and a
-provisioner sidecar in the agent pod creates the agent and workspace when they
-are missing. The new agent's config is a copy of the template agent `main` with
+signed-in account gets its own agent and workspace: the app stores
+`email -> agent slug` in `user_agents`, routes to `openclaw/<slug>`, and a
+provisioner sidecar in the agent pod creates the agent and workspace. Signup
+creates them before the account row, so an account that exists always has an
+agent; if the sidecar cannot create it, signup answers 503 and stores nothing. The new agent's config is a copy of the template agent `main` with
 only its name and workspace changed, so editing `main` also changes every agent
 created afterwards. Workspaces, the gateway config, the shared state (scheduler
 and run history), and per-agent sessions live on the `openclaw-data` PVC, so
@@ -71,7 +72,9 @@ scripts ship in the workspace template under `scripts/` and read their slug from
 
 Signing in is required for the page and `POST /message`. The first visit goes to
 `login.html`; email and password create an account (open signup) or sign in.
-Accounts live in the `users` table with a BCrypt hash. Sessions last 30 idle
+Signup provisions the account's agent first, so "account created" means "the app
+can be used", and a provisioning failure creates nothing. Accounts live in the
+`users` table with a BCrypt hash. Sessions last 30 idle
 minutes and the cookie is `SameSite=Lax` and `Secure` in `deploy/`; they are
 held in memory, so a restart signs everyone out. The agent API and the anonymous
 feedback endpoint stay outside the sign-in.
@@ -80,7 +83,8 @@ Run with `mvn spring-boot:run`, then open http://localhost:8080. Copy
 `.env.example` to `.env`: it needs `OPENJOB_DB_PATH`, `OPENCLAW_URL`,
 `OPENCLAW_TOKEN`, `PROVISIONER_URL`. The gateway also needs
 `gateway.http.endpoints.chatCompletions.enabled = true`. Without a reachable
-provisioner, `POST /message` answers 503.
+provisioner, signup answers 503 and creates nothing, and `POST /message` answers
+503 saying the message was not sent.
 
 ## Docker
 
