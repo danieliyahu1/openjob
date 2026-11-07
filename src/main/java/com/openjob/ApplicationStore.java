@@ -24,9 +24,17 @@ class ApplicationStore {
     }
 
     long add(String userId, String company, String title, String url) {
-        jdbc.update("INSERT INTO applications (user_id, company, title, url) VALUES (?, ?, ?, ?)",
-                userId, company, title, url);
-        return jdbc.queryForObject("SELECT last_insert_rowid()", Long.class);
+        List<Long> inserted = jdbc.query("""
+                INSERT INTO applications (user_id, company, title, url)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (user_id, url) DO NOTHING
+                RETURNING id
+                """, (rs, row) -> rs.getLong(1), userId, company, title, url);
+        if (!inserted.isEmpty()) {
+            return inserted.getFirst();
+        }
+        return jdbc.queryForObject(
+                "SELECT id FROM applications WHERE user_id = ? AND url = ?", Long.class, userId, url);
     }
 
     int mark(String userId, long id, String status) {

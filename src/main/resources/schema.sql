@@ -29,3 +29,12 @@ CREATE TABLE IF NOT EXISTS criteria (
     text       TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- One row per posting per account. The agent checks before it adds, but two
+-- runs can interleave, so the database enforces it. Rows with no URL are left
+-- alone (SQLite treats NULLs as distinct), and the oldest duplicate is kept.
+DELETE FROM applications
+ WHERE url IS NOT NULL
+   AND id NOT IN (SELECT MIN(id) FROM applications WHERE url IS NOT NULL GROUP BY user_id, url);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_user_url ON applications (user_id, url);
