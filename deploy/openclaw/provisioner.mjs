@@ -8,13 +8,14 @@ import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT || 18790);
 const ROOT = process.env.WORKSPACES_ROOT || "/home/node/.openclaw/workspaces";
-const TEMPLATE = process.env.TEMPLATE_WORKSPACE || "/home/node/.openclaw/workspace-openjob";
+const TEMPLATE = process.env.TEMPLATE_WORKSPACE || "/home/node/.openclaw/workspace";
+const TEMPLATE_AGENT = process.env.TEMPLATE_AGENT || "main";
 const DRY_RUN = process.env.PROVISION_DRY_RUN === "1";
 const SLUG = /^u-[0-9a-f]{12}$/;
 
 const log = (...parts) => console.log(new Date().toISOString(), ...parts);
 
-const openclaw = (...args) => {
+const run = (args, input) => {
   if (DRY_RUN) {
     log("[dry-run] openclaw", args.join(" "));
     return "";
@@ -22,9 +23,12 @@ const openclaw = (...args) => {
   return execFileSync("openclaw", args, {
     encoding: "utf8",
     timeout: 120_000,
-    stdio: ["ignore", "pipe", "pipe"],
+    input,
+    stdio: ["pipe", "pipe", "pipe"],
   });
 };
+
+const openclaw = (...args) => run(args);
 
 const hasAgent = (slug) => {
   if (DRY_RUN) return false;
@@ -42,7 +46,7 @@ const ensureApproval = (slug) => {
   const document = parsed.file ?? parsed;
   if (!document?.agents) throw new Error("unexpected approvals document");
   if (document.agents[slug]) return;
-  const template = document.agents.openjob || Object.values(document.agents)[0];
+  const template = document.agents[TEMPLATE_AGENT] || Object.values(document.agents)[0];
   if (!template) throw new Error("no approvals to copy");
   document.agents[slug] = { ...template };
   const file = `${ROOT}/.approvals-${process.pid}.json`;
@@ -56,15 +60,31 @@ const ensureApproval = (slug) => {
 
 const provision = (slug) => {
   const workspace = `${ROOT}/${slug}`;
+  // Fast path: already registered and its workspace is in place.
+  if (hasAgent(slug) && existsSync(`${workspace}/.openjob-id`)) return;
+
   mkdirSync(ROOT, { recursive: true });
   if (!existsSync(workspace)) {
     cpSync(TEMPLATE, workspace, { recursive: true });
   }
   writeFileSync(`${workspace}/.openjob-id`, `${slug}\n`);
+
   if (!hasAgent(slug)) {
     openclaw("agents", "add", slug, "--workspace", workspace, "--non-interactive");
+  }
+
+  // Make the entry an exact copy of the template agent, only renamed and
+  // pointed at this workspace. Changing the template updates future agents.
+  if (!DRY_RUN) {
+    const template = JSON.parse(
+      openclaw("config", "get", `agents.entries.${TEMPLATE_AGENT}`, "--json"));
+    const entry = { ...template, name: slug, workspace };
+    delete entry.agentDir;
+    run(["config", "patch", "--stdin", "--replace-path", `agents.entries.${slug}`],
+        JSON.stringify({ agents: { entries: { [slug]: entry } } }));
     if (!hasAgent(slug)) throw new Error("the gateway did not register the agent");
   }
+
   ensureApproval(slug);
   log("provisioned", slug);
 };

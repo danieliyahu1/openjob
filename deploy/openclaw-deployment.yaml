@@ -159,7 +159,9 @@ spec:
             - name: WORKSPACES_ROOT
               value: /home/node/.openclaw/workspaces
             - name: TEMPLATE_WORKSPACE
-              value: /home/node/.openclaw/workspace-openjob
+              value: /home/node/.openclaw/workspace
+            - name: TEMPLATE_AGENT
+              value: main
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

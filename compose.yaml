@@ -17,7 +17,7 @@ services:
       OPENCLAW_GATEWAY_URL: ws://openclaw:18789
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?}
       WORKSPACES_ROOT: /home/node/.openclaw/workspaces
-      TEMPLATE_WORKSPACE: /home/node/.openclaw/workspace-openjob
+      TEMPLATE_WORKSPACE: /home/node/.openclaw/workspace
     volumes:
       - workspaces:/home/node/.openclaw/workspaces
 

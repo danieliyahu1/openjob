@@ -12,9 +12,9 @@
       "model": { "primary": "opencode-go/deepseek-v4.1-flash" }
     },
     "entries": {
-      "openjob": {
-        "name": "job-searcher",
-        "workspace": "/home/node/.openclaw/workspace-openjob",
+      "main": {
+        "name": "main",
+        "workspace": "/home/node/.openclaw/workspace",
         "identity": { "name": "job-searcher" },
         "model": "opencode-go/deepseek-v4.1-flash",
         "tools": {

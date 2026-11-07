@@ -5,5 +5,5 @@ COPY openclaw.json /home/node/.openclaw/openclaw.json
 # the exec allowlist (the two workspace scripts and nothing else) survives the
 # ephemeral filesystem.
 COPY --chown=node:node exec-approvals.json /home/node/.openclaw/exec-approvals.json
-COPY --chown=node:node workspace /home/node/.openclaw/workspace-openjob
+COPY --chown=node:node workspace /home/node/.openclaw/workspace
 COPY --chown=node:node provisioner.mjs /opt/openjob/provisioner.mjs

@@ -56,8 +56,10 @@ endpoint. `POST /message` forwards the text to the OpenClaw Gateway
 account gets its own agent and workspace, created on demand: the app stores
 `email -> agent slug` in `user_agents`, routes to `openclaw/<slug>`, and a
 provisioner sidecar in the agent pod creates the agent and workspace when they
-are missing. Workspaces live on an emptyDir, so they are recreated after any
-agent pod restart. The conversation id is still the email.
+are missing. The new agent's config is a copy of the template agent `main` with
+only its name and workspace changed, so editing `main` also changes every agent
+created afterwards. Workspaces live on an emptyDir, so they are recreated after
+any agent pod restart. The conversation id is still the email.
 
 Applications are stored in SQLite (`openjob.db`, table `applications`) and managed
 through `GET/POST /api/applications` and `PATCH /api/applications/{id}`, guarded by
