@@ -13,12 +13,23 @@ const PORT = Number(process.env.PORT || 18790);
 const ROOT = process.env.WORKSPACES_ROOT || "/home/node/.openclaw/workspaces";
 const TEMPLATE = process.env.TEMPLATE_WORKSPACE || "/home/node/.openclaw/workspace";
 const TEMPLATE_AGENT = process.env.TEMPLATE_AGENT || "main";
-const GATEWAY = process.env.OPENCLAW_GATEWAY_URL || "http://127.0.0.1:18789";
-const TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || "";
 const DRY_RUN = process.env.PROVISION_DRY_RUN === "1";
 const SLUG = /^u-[0-9a-f]{12}$/;
 
 const log = (...parts) => console.log(new Date().toISOString(), ...parts);
+
+/** No defaults for wiring: a missing value must stop the sidecar, not guess. */
+const required = (name) => {
+  const value = process.env[name];
+  if (!value) {
+    log(`missing required environment variable ${name}`);
+    process.exit(1);
+  }
+  return value;
+};
+
+const GATEWAY = required("OPENCLAW_GATEWAY_URL");
+const TOKEN = required("OPENCLAW_GATEWAY_TOKEN");
 
 async function rpc(method, params = {}) {
   const response = await fetch(`${GATEWAY}/api/v1/admin/rpc`, {

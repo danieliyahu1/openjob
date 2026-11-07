@@ -208,7 +208,6 @@ spec:
                 secretKeyRef:
                   name: openjob-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
-                  optional: true
             - name: WORKSPACES_ROOT
               value: /home/node/.openclaw/workspaces
             - name: TEMPLATE_WORKSPACE

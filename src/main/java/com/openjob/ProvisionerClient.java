@@ -17,7 +17,7 @@ class ProvisionerClient {
 
     private final RestClient http;
 
-    ProvisionerClient(@Value("${PROVISIONER_URL:http://127.0.0.1:18790}") String url) {
+    ProvisionerClient(@Value("${PROVISIONER_URL}") String url) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(3));
         factory.setReadTimeout(Duration.ofSeconds(60));
