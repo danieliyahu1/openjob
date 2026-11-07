@@ -37,6 +37,11 @@
       }
     }
   },
+  "plugins": {
+    "entries": {
+      "admin-http-rpc": { "enabled": true }
+    }
+  },
   "tools": {
     "profile": "full",
     "sessions": { "visibility": "agent" },

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Automations · OpenJob</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; max-width: 760px; margin: 0 auto; padding: 1rem; }
+    header { display: flex; align-items: baseline; gap: .75rem; min-height: 1.5rem;
+             font-size: .9rem; color: #64748b; }
+    header a { color: #0f172a; text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    #who { margin-left: auto; }
+    header button {
+      padding: .25rem .5rem; border: 1px solid #e2e8f0; border-radius: .375rem;
+      background: #fff; color: inherit; font-size: .85rem; cursor: pointer;
+    }
+    h1 { font-size: 1.25rem; margin: 1.25rem 0 .5rem; }
+    form { display: grid; gap: .6rem; padding: 1rem; border: 1px solid #e2e8f0;
+           border-radius: .75rem; margin-bottom: 1.5rem; }
+    label { display: grid; gap: .3rem; font-size: .85rem; color: #475569; }
+    input, select, textarea {
+      padding: .5rem .6rem; border: 1px solid #e2e8f0; border-radius: .5rem;
+      font: inherit; width: 100%; box-sizing: border-box;
+    }
+    textarea { resize: vertical; min-height: 4.5rem; }
+    .row { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .row > label { flex: 1 1 8rem; }
+    button.primary {
+      justify-self: start; padding: .55rem 1rem; border: 0; border-radius: .5rem;
+      background: #0f172a; color: #fff; font: inherit; cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: default; }
+    #note { min-height: 1.1em; margin: 0; font-size: .85rem; }
+    #note.error { color: #b91c1c; }
+    #note.ok { color: #15803d; }
+    ul { list-style: none; padding: 0; display: grid; gap: .6rem; }
+    li { padding: .75rem; border: 1px solid #e2e8f0; border-radius: .6rem; }
+    .job { display: flex; align-items: flex-start; gap: .75rem; }
+    .job-main { flex: 1; min-width: 0; }
+    .job-name { font-weight: 600; }
+    .job-meta { font-size: .85rem; color: #64748b; }
+    .job.paused .job-name, .job.paused .job-meta { color: #94a3b8; }
+    .actions { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+    .actions button {
+      padding: .3rem .6rem; border: 1px solid #e2e8f0; border-radius: .375rem;
+      background: #fff; color: inherit; font-size: .85rem; cursor: pointer;
+    }
+    .actions button.danger { color: #b91c1c; border-color: #fecaca; }
+    #empty { color: #64748b; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/">Chat</a>
+    <span>Automations</span>
+    <span id="who"></span>
+    <button type="button" id="logout">Log out</button>
+  </header>
+
+  <h1>Automations</h1>
+
+  <form id="create">
+    <label>Name
+      <input id="name" maxlength="100" placeholder="Morning job search" required>
+    </label>
+    <label>What should it do?
+      <textarea id="prompt" maxlength="2000" placeholder="Search for new jobs matching my criteria" required></textarea>
+    </label>
+    <div class="row">
+      <label>Repeat
+        <select id="repeat">
+          <option value="daily">Every day</option>
+          <option value="weekly">Every week</option>
+          <option value="once">Once</option>
+        </select>
+      </label>
+      <label id="day-field" hidden>Day
+        <select id="day">
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+          <option value="0">Sunday</option>
+        </select>
+      </label>
+      <label id="time-field">Time
+        <input id="time" type="time" value="09:00" required>
+      </label>
+      <label id="date-field" hidden>Date and time
+        <input id="date" type="datetime-local">
+      </label>
+    </div>
+    <p id="note" role="status"></p>
+    <button class="primary" id="save" type="submit">Create automation</button>
+  </form>
+
+  <ul id="list"></ul>
+  <p id="empty" hidden>No automations yet.</p>
+
+  <script>
+    const list = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    const form = document.getElementById('create');
+    const note = document.getElementById('note');
+    const save = document.getElementById('save');
+    const repeat = document.getElementById('repeat');
+    const dayField = document.getElementById('day-field');
+    const timeField = document.getElementById('time-field');
+    const dateField = document.getElementById('date-field');
+    const timeInput = document.getElementById('time');
+    const dateInput = document.getElementById('date');
+
+    fetch('/api/auth/me')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((me) => { if (me) document.getElementById('who').textContent = me.email; });
+
+    document.getElementById('logout').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      location.replace('/login.html');
+    });
+
+    function setNote(text, kind) {
+      note.textContent = text;
+      note.className = kind || '';
+    }
+
+    function syncFields() {
+      const value = repeat.value;
+      dayField.hidden = value !== 'weekly';
+      timeField.hidden = value === 'once';
+      dateField.hidden = value !== 'once';
+      timeInput.required = value !== 'once';
+      dateInput.required = value === 'once';
+      if (value === 'once' && !dateInput.value) {
+        const soon = new Date(Date.now() + 60 * 60 * 1000);
+        soon.setSeconds(0, 0);
+        dateInput.value = soon.toISOString().slice(0, 16);
+      }
+    }
+    repeat.addEventListener('change', syncFields);
+    syncFields();
+
+    function button(text, onClick, danger) {
+      const element = document.createElement('button');
+      element.type = 'button';
+      element.textContent = text;
+      if (danger) element.className = 'danger';
+      element.addEventListener('click', onClick);
+      return element;
+    }
+
+    function render(jobs) {
+      list.replaceChildren();
+      empty.hidden = jobs.length > 0;
+      for (const job of jobs) {
+        const item = document.createElement('li');
+        if (!job.enabled) item.className = 'job paused';
+
+        const main = document.createElement('div');
+        main.className = 'job-main';
+        const name = document.createElement('div');
+        name.className = 'job-name';
+        name.textContent = job.name;
+        const meta = document.createElement('div');
+        meta.className = 'job-meta';
+        const next = job.enabled && job.nextRunAtMs
+          ? ' · next ' + new Date(job.nextRunAtMs).toLocaleString()
+          : (job.enabled ? '' : ' · paused');
+        meta.textContent = job.scheduleText + next;
+        main.append(name, meta);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.append(
+          button(job.enabled ? 'Pause' : 'Resume', () => mutate(job, 'PATCH',
+            '/api/automations/' + encodeURIComponent(job.id) + '?enabled=' + !job.enabled)),
+          button('Run now', () => mutate(job, 'POST',
+            '/api/automations/' + encodeURIComponent(job.id) + '/run')),
+          button('Delete', () => {
+            if (confirm('Delete "' + job.name + '"? This cannot be undone.')) {
+              mutate(job, 'DELETE', '/api/automations/' + encodeURIComponent(job.id));
+            }
+          }, true));
+
+        item.append(main, actions);
+        list.append(item);
+      }
+    }
+
+    async function load() {
+      const response = await fetch('/api/automations');
+      if (response.status === 401) {
+        location.replace('/login.html');
+        return;
+      }
+      if (!response.ok) {
+        setNote('Could not load automations (' + response.status + ').', 'error');
+        return;
+      }
+      render(await response.json());
+    }
+
+    async function mutate(job, method, url) {
+      setNote('', '');
+      const response = await fetch(url, { method });
+      if (response.status === 401) {
+        location.replace('/login.html');
+        return;
+      }
+      if (!response.ok) {
+        setNote('Could not update "' + job.name + '" (' + response.status + ').', 'error');
+        return;
+      }
+      await load();
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      save.disabled = true;
+      setNote('Saving…', '');
+      const body = new URLSearchParams({
+        name: document.getElementById('name').value.trim(),
+        prompt: document.getElementById('prompt').value.trim(),
+        repeat: repeat.value,
+        day: document.getElementById('day').value,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      });
+      if (repeat.value === 'once') {
+        body.set('date', document.getElementById('date').value);
+      } else {
+        body.set('time', document.getElementById('time').value);
+      }
+      try {
+        const response = await fetch('/api/automations', { method: 'POST', body });
+        if (response.status === 401) {
+          location.replace('/login.html');
+          return;
+        }
+        if (!response.ok) {
+          setNote('Could not create the automation (' + response.status + ').', 'error');
+          return;
+        }
+        form.reset();
+        syncFields();
+        setNote('Created.', 'ok');
+        await load();
+      } catch (failure) {
+        setNote('Could not create the automation.', 'error');
+      } finally {
+        save.disabled = false;
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>

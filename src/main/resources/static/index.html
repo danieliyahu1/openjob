@@ -18,6 +18,8 @@
       display: flex; justify-content: flex-end; align-items: baseline; gap: .75rem;
       min-height: 1.5rem; font-size: .9rem; color: #64748b;
     }
+    #account a { margin-right: auto; color: #0f172a; text-decoration: none; }
+    #account a:hover { text-decoration: underline; }
     #account button {
       padding: .25rem .5rem; border: 1px solid #e2e8f0; border-radius: .375rem;
       background: #fff; color: inherit; font-size: .85rem; cursor: pointer;
@@ -62,6 +64,7 @@
 </head>
 <body>
   <header id="account">
+    <a href="/automations.html">Automations</a>
     <span id="who"></span>
     <button type="button" id="logout">Log out</button>
   </header>
