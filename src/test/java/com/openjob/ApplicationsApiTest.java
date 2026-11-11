@@ -36,8 +36,8 @@ class ApplicationsApiTest {
 
     @Test
     void theAgentSlugIsTheOnlyThingNeeded() throws Exception {
-        when(agents.emailFor("u-0123456789ab")).thenReturn("me@example.com");
-        when(store.list("me@example.com", null)).thenReturn(List.of(
+        when(agents.visitorFor("u-0123456789ab")).thenReturn("a-abcdefabcdefabcdefabcdef");
+        when(store.list("a-abcdefabcdefabcdefabcdef", null)).thenReturn(List.of(
                 new ApplicationStore.Job(1, "Acme", "Backend", "https://acme.example/1", "found")));
 
         mvc.perform(get("/api/applications").header("X-OpenJob-Agent", "u-0123456789ab"))
@@ -47,7 +47,7 @@ class ApplicationsApiTest {
 
     @Test
     void anUnknownAgentIsRejected() throws Exception {
-        when(agents.emailFor("u-ffffffffffff")).thenReturn(null);
+        when(agents.visitorFor("u-ffffffffffff")).thenReturn(null);
 
         mvc.perform(get("/api/applications").header("X-OpenJob-Agent", "u-ffffffffffff"))
                 .andExpect(status().isUnauthorized());

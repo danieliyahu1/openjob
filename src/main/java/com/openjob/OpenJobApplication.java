@@ -1,6 +1,7 @@
 package com.openjob;
 
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import org.springframework.boot.SpringApplication;
@@ -30,6 +31,18 @@ public class OpenJobApplication {
 
         private static final Set<String> STATUSES = Set.of("found", "applied", "blocked");
 
+        /**
+         * A demo turn can run for minutes against real browser automation, so
+         * both the visitor and the network have a ceiling. Real testers send a
+         * handful of messages and never see either.
+         */
+        private static final int MESSAGES_PER_VISITOR_HOUR = 30;
+        private static final int MESSAGES_PER_NETWORK_HOUR = 100;
+
+        private final RateLimiter messages = new RateLimiter(MESSAGES_PER_VISITOR_HOUR, Duration.ofHours(1));
+        private final RateLimiter network =
+                new RateLimiter(MESSAGES_PER_NETWORK_HOUR, Duration.ofHours(1));
+
         private final OpenClawClient openClaw;
         private final ApplicationStore store;
         private final UserAgentStore userAgents;
@@ -47,13 +60,23 @@ public class OpenJobApplication {
         }
 
         /**
-         * Forwards one turn to the signed-in account's agent. Each failure says
-         * what actually happened: a timeout is not a failure, and an unreachable
+         * Forwards one turn to the visitor's agent. Each failure says what
+         * actually happened: a timeout is not a failure, and an unreachable
          * gateway means the turn never started.
          */
         @PostMapping("/message")
-        ResponseEntity<String> message(@RequestParam String message, HttpSession session) {
-            String user = requireUser(session);
+        ResponseEntity<String> message(@RequestParam String message, HttpServletRequest request) {
+            String user = VisitorIdentity.require(request);
+            long wait = messages.permit(user);
+            if (wait == 0) {
+                wait = network.permit(ClientAddress.of(request));
+            }
+            if (wait > 0) {
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .header("Retry-After", String.valueOf(wait))
+                        .body("The demo allows " + MESSAGES_PER_VISITOR_HOUR
+                                + " messages an hour. Try again in " + wait + " seconds.");
+            }
             String agent = userAgents.ensure(user);
             try {
                 provisioning.ensure(agent);
@@ -88,14 +111,6 @@ public class OpenJobApplication {
                 metrics.agentFinished("failure", System.nanoTime() - started);
                 throw failure;
             }
-        }
-
-        private static String requireUser(HttpSession session) {
-            Object user = session.getAttribute(AuthController.USER);
-            if (user == null) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "sign in first");
-            }
-            return user.toString();
         }
 
         /**
@@ -145,11 +160,11 @@ public class OpenJobApplication {
         }
 
         private String owner(String agent) {
-            String email = userAgents.emailFor(agent);
-            if (email == null) {
+            String visitor = userAgents.visitorFor(agent);
+            if (visitor == null) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "unknown agent");
             }
-            return email;
+            return visitor;
         }
     }
 }

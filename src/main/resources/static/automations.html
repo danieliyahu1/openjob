@@ -10,11 +10,7 @@
              font-size: .9rem; color: #64748b; }
     header a { color: #0f172a; text-decoration: none; }
     header a:hover { text-decoration: underline; }
-    #who { margin-left: auto; }
-    header button {
-      padding: .25rem .5rem; border: 1px solid #e2e8f0; border-radius: .375rem;
-      background: #fff; color: inherit; font-size: .85rem; cursor: pointer;
-    }
+    .session { margin-left: auto; font-size: .8rem; color: #94a3b8; }
     h1 { font-size: 1.25rem; margin: 1.25rem 0 .5rem; }
     form { display: grid; gap: .6rem; padding: 1rem; border: 1px solid #e2e8f0;
            border-radius: .75rem; margin-bottom: 1.5rem; }
@@ -54,8 +50,9 @@
   <header>
     <a href="/">Chat</a>
     <span>Automations</span>
-    <span id="who"></span>
-    <button type="button" id="logout">Log out</button>
+    <span class="session" title="Clearing this browser's site data starts a new session.">
+      Demo session &middot; kept in this browser
+    </span>
   </header>
 
   <h1>Automations</h1>
@@ -112,15 +109,6 @@
     const dateField = document.getElementById('date-field');
     const timeInput = document.getElementById('time');
     const dateInput = document.getElementById('date');
-
-    fetch('/api/auth/me')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((me) => { if (me) document.getElementById('who').textContent = me.email; });
-
-    document.getElementById('logout').addEventListener('click', async () => {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      location.replace('/login.html');
-    });
 
     function setNote(text, kind) {
       note.textContent = text;
@@ -209,7 +197,7 @@
     async function load() {
       const response = await fetch('/api/automations');
       if (response.status === 401) {
-        location.replace('/login.html');
+        setNote('This browser lost its session cookie. Reload the page to start.', 'error');
         return;
       }
       if (!response.ok) {
@@ -223,7 +211,7 @@
       setNote('', '');
       const response = await fetch(url, { method });
       if (response.status === 401) {
-        location.replace('/login.html');
+        setNote('This browser lost its session cookie. Reload the page to start.', 'error');
         return;
       }
       if (!response.ok) {
@@ -252,7 +240,7 @@
       try {
         const response = await fetch('/api/automations', { method: 'POST', body });
         if (response.status === 401) {
-          location.replace('/login.html');
+          setNote('This browser lost its session cookie. Reload the page to start.', 'error');
           return;
         }
         if (!response.ok) {

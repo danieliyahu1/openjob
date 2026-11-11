@@ -7,8 +7,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * The account's OpenClaw agent. The email stays the user id everywhere in the
- * app; the slug is only what the gateway and the workspace are named after.
+ * The visitor's OpenClaw agent. The visitor id is the account id everywhere in
+ * the app; the slug is only what the gateway and the workspace are named after.
  */
 @Component
 class UserAgentStore {
@@ -21,27 +21,27 @@ class UserAgentStore {
         this.jdbc = jdbc;
     }
 
-    /** Returns the account's agent slug, creating it on first use. */
-    String ensure(String email) {
-        String existing = slugFor(email);
+    /** Returns the visitor's agent slug, creating it on first use. */
+    String ensure(String visitor) {
+        String existing = slugFor(visitor);
         if (existing != null) {
             return existing;
         }
         jdbc.update("""
-                INSERT INTO user_agents (slug, email) VALUES (?, ?)
-                ON CONFLICT (email) DO NOTHING
-                """, newSlug(), email);
-        return slugFor(email);
+                INSERT INTO user_agents (slug, visitor_id) VALUES (?, ?)
+                ON CONFLICT (visitor_id) DO NOTHING
+                """, newSlug(), visitor);
+        return slugFor(visitor);
     }
 
-    String slugFor(String email) {
-        List<String> rows = jdbc.query("SELECT slug FROM user_agents WHERE email = ?",
-                (rs, row) -> rs.getString(1), email);
+    String slugFor(String visitor) {
+        List<String> rows = jdbc.query("SELECT slug FROM user_agents WHERE visitor_id = ?",
+                (rs, row) -> rs.getString(1), visitor);
         return rows.isEmpty() ? null : rows.getFirst();
     }
 
-    String emailFor(String slug) {
-        List<String> rows = jdbc.query("SELECT email FROM user_agents WHERE slug = ?",
+    String visitorFor(String slug) {
+        List<String> rows = jdbc.query("SELECT visitor_id FROM user_agents WHERE slug = ?",
                 (rs, row) -> rs.getString(1), slug);
         return rows.isEmpty() ? null : rows.getFirst();
     }

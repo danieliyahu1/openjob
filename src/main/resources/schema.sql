@@ -1,12 +1,10 @@
-CREATE TABLE IF NOT EXISTS users (
-    email         TEXT PRIMARY KEY,
-    password_hash TEXT NOT NULL,
-    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-);
+-- Accounts are anonymous now: the browser cookie id is the account. The old
+-- email/password table is dropped rather than left behind with stale hashes.
+DROP TABLE IF EXISTS users;
 
 CREATE TABLE IF NOT EXISTS user_agents (
     slug       TEXT PRIMARY KEY,
-    email      TEXT NOT NULL UNIQUE,
+    visitor_id TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

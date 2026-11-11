@@ -14,4 +14,4 @@ data:
   OPENJOB_DB_PATH: /data/openjob.db
   MANAGEMENT_PORT: "9090"
   # Public traffic is HTTPS at the Cloudflare edge; local dev stays on http.
-  SESSION_COOKIE_SECURE: "true"
+  OPENJOB_COOKIE_SECURE: "true"

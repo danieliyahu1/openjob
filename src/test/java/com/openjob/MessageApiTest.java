@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -18,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(controllers = OpenJobApplication.MessageController.class,
         properties = "OPENJOB_DB_PATH=test.db")
 class MessageApiTest {
+
+    private static final String VISITOR = "a-abcdefabcdefabcdefabcdef";
 
     @Autowired
     private MockMvc mvc;
@@ -35,7 +38,7 @@ class MessageApiTest {
 
     @Test
     void anAgentThatIsNotReadySaysTheMessageWasNotSent() throws Exception {
-        when(agents.ensure("me@example.com")).thenReturn("u-0123456789ab");
+        when(agents.ensure(VISITOR)).thenReturn("u-0123456789ab");
         doThrow(new AgentProvisioning.AgentUnavailable("u-0123456789ab", new IllegalStateException("down")))
                 .when(provisioning).ensure("u-0123456789ab");
 
@@ -46,7 +49,7 @@ class MessageApiTest {
 
     @Test
     void aTurnThatTimedOutIsNotReportedAsAFailure() throws Exception {
-        when(agents.ensure("me@example.com")).thenReturn("u-0123456789ab");
+        when(agents.ensure(VISITOR)).thenReturn("u-0123456789ab");
         when(openClaw.reply(anyString(), anyString(), anyString()))
                 .thenThrow(new OpenClawClient.Timeout(null));
 
@@ -57,7 +60,7 @@ class MessageApiTest {
 
     @Test
     void aRefusedTurnReportsTheGatewayStatus() throws Exception {
-        when(agents.ensure("me@example.com")).thenReturn("u-0123456789ab");
+        when(agents.ensure(VISITOR)).thenReturn("u-0123456789ab");
         when(openClaw.reply(anyString(), anyString(), anyString()))
                 .thenThrow(new OpenClawClient.Rejected(400, null));
 
@@ -66,9 +69,14 @@ class MessageApiTest {
                 .andExpect(content().string(containsString("HTTP 400")));
     }
 
+    /**
+     * The cookie is what the real filter reads; the request attribute covers a
+     * MockMvc context where the filter is not registered.
+     */
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder message() {
         return post("/message")
                 .param("message", "any news?")
-                .sessionAttr(AuthController.USER, "me@example.com");
+                .cookie(new Cookie(VisitorIdentity.COOKIE, VISITOR))
+                .requestAttr(VisitorIdentity.ATTRIBUTE, VISITOR);
     }
 }

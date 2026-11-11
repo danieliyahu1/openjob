@@ -22,7 +22,7 @@ class UserAgentStoreTest {
         jdbc.execute("""
                 CREATE TABLE user_agents (
                     slug       TEXT PRIMARY KEY,
-                    email      TEXT NOT NULL UNIQUE,
+                    visitor_id TEXT NOT NULL UNIQUE,
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
                 """);
@@ -35,20 +35,19 @@ class UserAgentStoreTest {
     }
 
     @Test
-    void createsOneSlugPerEmail() {
-        String slug = store.ensure("alice@example.com");
+    void createsOneSlugPerVisitor() {
+        String slug = store.ensure("a-000000000000000000000001");
 
         assertThat(slug).matches("u-[0-9a-f]{12}");
-        assertThat(store.ensure("alice@example.com")).isEqualTo(slug);
-        assertThat(store.slugFor("alice@example.com")).isEqualTo(slug);
-        assertThat(store.emailFor(slug)).isEqualTo("alice@example.com");
+        assertThat(store.ensure("a-000000000000000000000001")).isEqualTo(slug);
+        assertThat(store.slugFor("a-000000000000000000000001")).isEqualTo(slug);
+        assertThat(store.visitorFor(slug)).isEqualTo("a-000000000000000000000001");
     }
 
     @Test
-    void keepsAccountsApart() {
-        assertThat(store.ensure("alice@example.com"))
-                .isNotEqualTo(store.ensure("bob@example.com"));
-        assertThat(store.emailFor("u-000000000000")).isNull();
+    void keepsVisitorsApart() {
+        assertThat(store.ensure("a-000000000000000000000001"))
+                .isNotEqualTo(store.ensure("a-000000000000000000000002"));
+        assertThat(store.visitorFor("u-000000000000")).isNull();
     }
-
 }

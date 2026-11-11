@@ -1,6 +1,6 @@
 package com.openjob;
 
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -22,7 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The user creates automations from the app; the agent never needs its tool.
- * Every call is resolved to the signed-in account's own agent.
+ * Every call is resolved to the visitor's own agent.
  */
 @RestController
 class AutomationController {
@@ -39,8 +39,8 @@ class AutomationController {
     }
 
     @GetMapping("/api/automations")
-    List<AutomationsClient.Job> list(HttpSession session) {
-        return automations.list(readyAgent(session));
+    List<AutomationsClient.Job> list(HttpServletRequest request) {
+        return automations.list(readyAgent(request));
     }
 
     @PostMapping("/api/automations")
@@ -51,8 +51,8 @@ class AutomationController {
                                  @RequestParam(required = false) String date,
                                  @RequestParam(defaultValue = "0") int day,
                                  @RequestParam(defaultValue = "UTC") String timezone,
-                                 HttpSession session) {
-        String agent = readyAgent(session);
+                                 HttpServletRequest request) {
+        String agent = readyAgent(request);
         String jobName = name == null ? "" : name.strip();
         String message = prompt == null ? "" : prompt.strip();
         if (jobName.isEmpty() || message.isEmpty()) {
@@ -65,20 +65,21 @@ class AutomationController {
     }
 
     @PatchMapping("/api/automations/{id}")
-    void setEnabled(@PathVariable String id, @RequestParam boolean enabled, HttpSession session) {
-        owned(id, session);
+    void setEnabled(@PathVariable String id, @RequestParam boolean enabled,
+                    HttpServletRequest request) {
+        owned(id, request);
         automations.setEnabled(id, enabled);
     }
 
     @PostMapping("/api/automations/{id}/run")
-    void run(@PathVariable String id, HttpSession session) {
-        owned(id, session);
+    void run(@PathVariable String id, HttpServletRequest request) {
+        owned(id, request);
         automations.run(id);
     }
 
     @DeleteMapping("/api/automations/{id}")
-    void remove(@PathVariable String id, HttpSession session) {
-        owned(id, session);
+    void remove(@PathVariable String id, HttpServletRequest request) {
+        owned(id, request);
         automations.remove(id);
     }
 
@@ -133,11 +134,8 @@ class AutomationController {
         return spec;
     }
 
-    private String agent(HttpSession session) {
-        String user = (String) session.getAttribute(AuthController.USER);
-        if (user == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
-        }
+    private String agent(HttpServletRequest request) {
+        String user = VisitorIdentity.require(request);
         return userAgents.ensure(user);
     }
 
@@ -146,8 +144,8 @@ class AutomationController {
      * Provisioning is remembered per process, so this is free after the first
      * request for an account.
      */
-    private String readyAgent(HttpSession session) {
-        String agent = agent(session);
+    private String readyAgent(HttpServletRequest request) {
+        String agent = agent(request);
         try {
             provisioning.ensure(agent);
         } catch (AgentProvisioning.AgentUnavailable notReady) {
@@ -162,8 +160,8 @@ class AutomationController {
      * toggle or a delete must not depend on the provisioner being up, so this
      * uses the stored slug only.
      */
-    private void owned(String id, HttpSession session) {
-        String agent = agent(session);
+    private void owned(String id, HttpServletRequest request) {
+        String agent = agent(request);
         AutomationsClient.Job job = automations.get(id);
         if (job.agentId() == null || !job.agentId().equals(agent)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);

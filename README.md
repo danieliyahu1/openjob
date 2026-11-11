@@ -15,7 +15,7 @@ flowchart LR
     subgraph k8s["Kubernetes — namespace openjob"]
         subgraph app["openjob · 1 replica"]
             web["OpenJob<br/>Spring Boot<br/>:8080"]
-            db[("SQLite<br/>users · user_agents<br/>applications · criteria")]
+            db[("SQLite<br/>user_agents · applications · criteria")]
         end
 
         subgraph claw["openclaw · 1 replica"]
@@ -59,7 +59,7 @@ secret delivery.
 | Job state (`found`/`applied`/`blocked`) | OpenJob (`applications` table) — the only copy |
 | UI, four endpoints for the agent, automations | This repo |
 
-Each account gets one agent slug (`u-<12 hex>`) in `user_agents` and one
+Each visitor gets one agent slug (`u-<12 hex>`) in `user_agents` and one
 workspace on the `openclaw-data` volume. The slug is written into the workspace
 as `.openjob-id`; the scripts read it and send it as `X-OpenJob-Agent`.
 
@@ -82,12 +82,11 @@ environment — see `Security` below.
 
 Walking skeleton: a Spring Boot 3.5 / Java 21 app with a chat page, the board
 API, and the automations page. `POST /message` forwards the text to the OpenClaw
-Gateway (`POST /v1/chat/completions`) and returns the agent's reply. Each
-signed-in account gets its own agent and workspace: the app stores
-`email -> agent slug` in `user_agents`, routes to `openclaw/<slug>`, and a
-provisioner sidecar in the agent pod creates the agent and workspace. Signup
-creates them before the account row, so an account that exists always has an
-agent; if the sidecar cannot create it, signup answers 503 and stores nothing. The new agent's config is a copy of the template agent `main` with
+Gateway (`POST /v1/chat/completions`) and returns the agent's reply. Each visitor
+gets their own agent and workspace: the app stores `visitor id -> agent slug` in
+`user_agents`, routes to `openclaw/<slug>`, and a provisioner sidecar in the
+agent pod creates the agent and workspace on the visitor's first message. The
+new agent's config is a copy of the template agent `main` with
 only its name and workspace changed, so editing `main` also changes every agent
 created afterwards. Workspaces, the gateway config, the shared state (scheduler
 and run history), and per-agent sessions live on the `openclaw-data` PVC, so
@@ -95,31 +94,33 @@ they survive agent pod restarts. The config is seeded from the image on first
 run; on every start an init container rebuilds each agent entry from the image's
 template agent `main`, keeping only its slug and workspace, so agent config
 changes ship with the image while the rest of the config stays editable on the
-volume. The conversation id is still the email.
+volume. The conversation id is the visitor id.
 
 Applications are stored in SQLite (`openjob.db`, table `applications`) and managed
 through `GET/POST /api/applications` and `PATCH /api/applications/{id}`; rows are
-scoped to the account the agent slug belongs to, which the caller sends as
+scoped to the visitor the agent slug belongs to, which the caller sends as
 `X-OpenJob-Agent`. Statuses are `found`, `applied`, `blocked`. Per-user match
 criteria live in the `criteria` table (`GET/POST /api/criteria`). The agent's
 scripts ship in the workspace template under `scripts/` and read their slug from
 `.openjob-id`; `sync-workspace` restores them whenever the image changes.
 
-Signing in is required for the page and `POST /message`. The first visit goes to
-`login.html`; email and password create an account (open signup) or sign in.
-Signup provisions the account's agent first, so "account created" means "the app
-can be used", and a provisioning failure creates nothing. Accounts live in the
-`users` table with a BCrypt hash. Sessions last 30 idle
-minutes and the cookie is `SameSite=Lax` and `Secure` in `deploy/`; they are
-held in memory, so a restart signs everyone out. The agent API and the anonymous
-feedback endpoint stay outside the sign-in.
+There is no signup and no login. The first page load mints a random visitor id
+(`a-<24 hex>`) into an `HttpOnly`, `SameSite=Lax`, `Secure` cookie that lives for
+180 days; that cookie is the account, and `user_agents.visitor_id` maps it to an
+agent. Clearing site data or switching browsers starts a new account, which is
+the trade this MVP makes. The id is a bearer credential: it is never put in a
+URL. Mutating requests without a cookie are refused rather than given a new
+identity, so a script cannot mint an agent per call. New identities are limited
+to 5 per client address per day, messages to 30 per visitor per hour and 100 per
+network per hour; the counters are in memory and reset with the process. The
+agent API and the anonymous feedback endpoint stay outside the cookie. The
+`users` table is dropped on startup, so the old email accounts are gone.
 
 Run with `mvn spring-boot:run`, then open http://localhost:8080. Copy
 `.env.example` to `.env`: it needs `OPENJOB_DB_PATH`, `OPENCLAW_URL`,
 `OPENCLAW_TOKEN`, `PROVISIONER_URL`. The gateway also needs
 `gateway.http.endpoints.chatCompletions.enabled = true`. Without a reachable
-provisioner, signup answers 503 and creates nothing, and `POST /message` answers
-503 saying the message was not sent.
+provisioner, the first message answers 503 saying the message was not sent.
 
 ## Docker
 
@@ -177,5 +178,6 @@ Vault); until those exist the endpoint answers 503 and the dashboard shows the
 
 Known limits: the CV workflow still has no CV volume on the VM, so the master CV
 must be placed in the workspace; a long agent run can outlive Cloudflare's 100 s
-origin timeout; and a LinkedIn challenge requires a human, which a headless agent
-cannot provide.
+origin timeout; a LinkedIn challenge requires a human, which a headless agent
+cannot provide; and agents abandoned by visitors who never come back are not
+reaped yet, so the workspace volume grows with the number of distinct browsers.
